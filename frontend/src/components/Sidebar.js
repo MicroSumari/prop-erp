@@ -82,22 +82,16 @@ function Sidebar({ show, handleClose }) {
       ],
     },
     {
-      id: 'legal-cases',
-      label: 'Legal Cases',
-      icon: 'fas fa-gavel',
-      link: '/legal-cases',
-    },
-    {
       id: 'maintenance',
       label: 'Maintenance',
       icon: 'fas fa-tools',
       isCollapsible: true,
       subsections: [
-        {
-          label: 'Maintenance Records',
-          icon: 'fas fa-list',
-          link: '/maintenance',
-        },
+        // {
+        //   label: 'Maintenance Records',
+        //   icon: 'fas fa-list',
+        //   link: '/maintenance',
+        // },
         {
           label: 'Maintenance Requests',
           icon: 'fas fa-wrench',
@@ -111,11 +105,18 @@ function Sidebar({ show, handleClose }) {
       ],
     },
     {
-      id: 'expenses',
-      label: 'Expenses',
-      icon: 'fas fa-receipt',
-      link: '/expenses',
+      id: 'legal-cases',
+      label: 'Legal Cases',
+      icon: 'fas fa-gavel',
+      link: '/legal-cases',
     },
+
+    // {
+    //   id: 'expenses',
+    //   label: 'Expenses',
+    //   icon: 'fas fa-receipt',
+    //   link: '/expenses',
+    // },
   ];
 
   const sidebarContent = (
