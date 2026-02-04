@@ -1,0 +1,86 @@
+.dashboard {
+  padding: 20px 0;
+}
+
+.dashboard-header {
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+  color: #0d47a1;
+  font-weight: 700;
+  font-size: 2rem;
+}
+
+.dashboard-header p {
+  font-size: 1rem;
+  margin: 0.5rem 0 0 0;
+}
+
+.stat-card {
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.stat-card .card-body {
+  padding: 1.5rem;
+}
+
+.stat-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.stat-icon {
+  font-size: 2.5rem;
+  color: #0d47a1;
+  opacity: 0.7;
+  min-width: 50px;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0;
+  color: #0d47a1;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-bottom: 0;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+/* Quick Actions Section */
+.quick-actions {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.quick-actions h3 {
+  color: #0d47a1;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.quick-actions .btn {
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}

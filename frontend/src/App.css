@@ -1,0 +1,50 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  margin-top: 70px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 30px 20px;
+  background-color: #f8f9fa;
+  margin-left: 260px;
+  width: calc(100% - 260px);
+  overflow-y: auto;
+}
+
+@media (max-width: 1199px) {
+  .main-content {
+    margin-left: 220px;
+    width: calc(100% - 220px);
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 20px 15px;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .app-body {
+    margin-top: 0;
+  }
+}
+
+/* Table action buttons - prevent wrapping */
+td:last-child {
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+/* Smaller action buttons */
+.btn-sm i {
+  font-size: 0.875rem;
+}

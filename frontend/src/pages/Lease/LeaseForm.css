@@ -1,0 +1,53 @@
+.lease-form-container {
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lease-form-card {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border: none;
+}
+
+.lease-form-card .card-header {
+  border-bottom: 2px solid #0d6efd;
+  padding: 1.5rem;
+}
+
+.lease-form-card h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.lease-form-card h4 {
+  color: #0d6efd;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.lease-form-card .form-label {
+  font-weight: 500;
+  color: #333;
+}
+
+.lease-form-card .text-danger {
+  color: #dc3545;
+  margin-left: 2px;
+}
+
+.lease-form-card .form-control:focus,
+.lease-form-card .form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.lease-form-card .btn-lg {
+  padding: 0.75rem 2rem;
+  font-weight: 500;
+}
+
+.lease-form-card .alert {
+  border-radius: 0.5rem;
+  border: none;
+}

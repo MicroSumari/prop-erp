@@ -1,0 +1,359 @@
+/* Lease Renewal Styling */
+.lease-renewal-container {
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.lease-renewal-container .header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #ddd;
+}
+
+.lease-renewal-container h1 {
+  color: #333;
+  margin: 0 0 10px 0;
+  font-size: 28px;
+}
+
+.lease-renewal-container > .header p {
+  color: #666;
+  margin: 0;
+  font-size: 14px;
+}
+
+.lease-renewal-container .actions {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.lease-renewal-container .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.lease-renewal-container .btn-primary {
+  background-color: #2c3e50;
+  color: white;
+}
+
+.lease-renewal-container .btn-primary:hover {
+  background-color: #34495e;
+}
+
+.lease-renewal-container .btn-success {
+  background-color: #27ae60;
+  color: white;
+}
+
+.lease-renewal-container .btn-success:hover {
+  background-color: #229954;
+}
+
+.lease-renewal-container .btn-warning {
+  background-color: #f39c12;
+  color: white;
+}
+
+.lease-renewal-container .btn-warning:hover {
+  background-color: #e67e22;
+}
+
+.lease-renewal-container .btn-secondary {
+  background-color: #95a5a6;
+  color: white;
+}
+
+.lease-renewal-container .btn-secondary:hover {
+  background-color: #7f8c8d;
+}
+
+.lease-renewal-container .btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.lease-renewal-container .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.lease-renewal-container .alert {
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.lease-renewal-container .alert-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.lease-renewal-container .alert-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.lease-renewal-container .form-container {
+  background-color: white;
+  padding: 25px;
+  border-radius: 4px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.lease-renewal-container .form-container h2 {
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.lease-renewal-container .form-container h3 {
+  color: #555;
+  margin-top: 20px;
+  margin-bottom: 15px;
+  font-size: 16px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.lease-renewal-container form {
+  display: grid;
+  gap: 15px;
+}
+
+.lease-renewal-container .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.lease-renewal-container .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.lease-renewal-container .form-group label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.lease-renewal-container .form-group input,
+.lease-renewal-container .form-group select,
+.lease-renewal-container .form-group textarea {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.lease-renewal-container .form-group input:focus,
+.lease-renewal-container .form-group select:focus,
+.lease-renewal-container .form-group textarea:focus {
+  outline: none;
+  border-color: #2c3e50;
+  box-shadow: 0 0 4px rgba(44, 62, 80, 0.2);
+}
+
+.lease-renewal-container .form-group textarea {
+  resize: vertical;
+}
+
+.lease-renewal-container .form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  justify-content: flex-start;
+}
+
+.lease-renewal-container .lease-info-box {
+  background-color: #f0f8ff;
+  border-left: 4px solid #2c3e50;
+  padding: 15px;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+.lease-renewal-container .lease-info-box h3 {
+  color: #2c3e50;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 15px;
+  border: none;
+  padding: 0;
+}
+
+.lease-renewal-container .info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.lease-renewal-container .info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lease-renewal-container .info-item label {
+  font-weight: 600;
+  color: #555;
+  margin: 0;
+}
+
+.lease-renewal-container .info-item span {
+  color: #333;
+  font-weight: 500;
+}
+
+.lease-renewal-container .filter-section {
+  background-color: white;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.lease-renewal-container .filter-section label {
+  font-weight: 600;
+  color: #333;
+}
+
+.lease-renewal-container .filter-section select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.lease-renewal-container .renewals-table-container {
+  background-color: white;
+  border-radius: 4px;
+  overflow-x: auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.lease-renewal-container .renewals-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.lease-renewal-container .renewals-table thead {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.lease-renewal-container .renewals-table th {
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+.lease-renewal-container .renewals-table td {
+  padding: 15px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.lease-renewal-container .renewals-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.lease-renewal-container .renewals-table strong {
+  color: #2c3e50;
+}
+
+.lease-renewal-container .status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lease-renewal-container .status-draft {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.lease-renewal-container .status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.lease-renewal-container .status-approved {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.lease-renewal-container .status-active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.lease-renewal-container .status-rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.lease-renewal-container .status-cancelled {
+  background-color: #d6d8db;
+  color: #383d41;
+}
+
+.lease-renewal-container .actions-cell {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.lease-renewal-container .empty-message {
+  text-align: center;
+  color: #999;
+  padding: 40px !important;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .lease-renewal-container .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .lease-renewal-container .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lease-renewal-container .renewals-table {
+    font-size: 12px;
+  }
+
+  .lease-renewal-container .renewals-table th,
+  .lease-renewal-container .renewals-table td {
+    padding: 10px;
+  }
+
+  .lease-renewal-container .actions-cell {
+    flex-direction: column;
+  }
+
+  .lease-renewal-container .btn-sm {
+    width: 100%;
+  }
+}
