@@ -2,8 +2,11 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import SalesOrder, ReceiptVoucher
-from .serializers import SalesOrderSerializer, ReceiptVoucherSerializer
+from .models import SalesOrder, ReceiptVoucher, CustomerInvoice
+from .serializers import SalesOrderSerializer, ReceiptVoucherSerializer, CustomerInvoiceSerializer
+from .services import ReceiptVoucherService, CustomerInvoiceService
+from erp_system.apps.accounts.models import ChequeRegister
+from erp_system.apps.accounts.services import ChequeRegisterService
 from erp_system.apps.property.models import Tenant
 
 
@@ -39,6 +42,23 @@ class ReceiptVoucherViewSet(viewsets.ModelViewSet):
             ).count()
             receipt.receipt_number = f"RV-{timezone.now().strftime('%Y%m%d')}-{count + 1:04d}"
             receipt.save()
+
+        if receipt.status in ['submitted', 'cleared']:
+            ReceiptVoucherService.post_receipt_voucher(receipt)
+
+        if receipt.payment_method in ['cheque', 'post_dated_cheque']:
+            ChequeRegister.objects.create(
+                cheque_type='incoming',
+                cheque_number=receipt.cheque_number or receipt.receipt_number,
+                cheque_date=receipt.cheque_date or receipt.payment_date,
+                amount=receipt.amount,
+                bank_name=receipt.bank_name,
+                status='received',
+                receipt_voucher=receipt,
+                cheques_received_account=receipt.post_dated_cheques_account,
+                bank_account=receipt.bank_account,
+                cost_center=receipt.cost_center,
+            )
     
     @action(detail=True, methods=['post'])
     def mark_cleared(self, request, pk=None):
@@ -55,6 +75,11 @@ class ReceiptVoucherViewSet(viewsets.ModelViewSet):
         receipt.status = 'cleared'
         receipt.cleared_date = timezone.now().date()
         receipt.save()
+
+        if receipt.payment_method in ['cheque', 'post_dated_cheque']:
+            cheque = receipt.cheque_registers.first()
+            if cheque:
+                ChequeRegisterService.mark_cleared(cheque)
         
         serializer = self.get_serializer(receipt)
         return Response(serializer.data)
@@ -75,6 +100,17 @@ class ReceiptVoucherViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(receipt)
         return Response(serializer.data)
+
+
+class CustomerInvoiceViewSet(viewsets.ModelViewSet):
+    """Customer invoice viewset with accounting posting"""
+    queryset = CustomerInvoice.objects.all()
+    serializer_class = CustomerInvoiceSerializer
+
+    def perform_create(self, serializer):
+        invoice = serializer.save()
+        if invoice.status in ['submitted', 'paid']:
+            CustomerInvoiceService.post_customer_invoice(invoice)
     
     @action(detail=False, methods=['get'])
     def by_tenant(self, request):

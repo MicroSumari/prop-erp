@@ -69,15 +69,58 @@ function Sidebar({ show, handleClose }) {
           icon: 'fas fa-times-circle',
           link: '/lease-termination',
         },
-        {
-          label: 'Rent Collection',
-          icon: 'fas fa-dollar-sign',
-          link: '/rent-collection',
-        },
+        // {
+        //   label: 'Rent Collection',
+        //   icon: 'fas fa-dollar-sign',
+        //   link: '/rent-collection',
+        // },
         {
           label: 'Receipt Vouchers',
           icon: 'fas fa-receipt',
           link: '/receipt-vouchers',
+        },
+      ],
+    },
+    {
+      id: 'accounting',
+      label: 'Accounting',
+      icon: 'fas fa-calculator',
+      isCollapsible: true,
+      subsections: [
+        {
+          label: 'Customer Invoices',
+          icon: 'fas fa-file-invoice',
+          link: '/customer-invoices',
+        },
+        {
+          label: 'Supplier Invoices',
+          icon: 'fas fa-file-invoice-dollar',
+          link: '/supplier-invoices',
+        },
+        {
+          label: 'Payment Vouchers',
+          icon: 'fas fa-hand-holding-usd',
+          link: '/payment-vouchers',
+        },
+        {
+          label: 'Cheque Register',
+          icon: 'fas fa-money-check',
+          link: '/cheque-register',
+        },
+        {
+          label: 'Manual Journals',
+          icon: 'fas fa-book',
+          link: '/manual-journals',
+        },
+        {
+          label: 'Trial Balance',
+          icon: 'fas fa-balance-scale',
+          link: '/trial-balance',
+        },
+        {
+          label: 'General Ledger',
+          icon: 'fas fa-book-open',
+          link: '/general-ledger',
         },
       ],
     },

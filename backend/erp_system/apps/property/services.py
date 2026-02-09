@@ -3,7 +3,8 @@ Leasing accounting services for lease creation, renewal, termination, and receip
 Implements strict double-entry accounting with cost centers and reference tracking.
 """
 
-from decimal import Decimal
+import calendar
+from decimal import Decimal, ROUND_HALF_UP
 from django.db import transaction
 from django.utils import timezone
 from erp_system.apps.accounts.models import Account, JournalEntry, JournalLine, CostCenter
@@ -255,6 +256,90 @@ class LeaseTerminationService:
         termination.save()
         
         return journal_entry
+
+
+class LeaseRevenueRecognitionService:
+    """Monthly revenue recognition for leases (Unearned → Income)"""
+
+    @staticmethod
+    def _calculate_prorated_amount(lease, run_date):
+        month_days = calendar.monthrange(run_date.year, run_date.month)[1]
+        period_start = run_date.replace(day=1)
+        period_end = run_date.replace(day=month_days)
+
+        start_date = max(lease.start_date, period_start)
+        end_date = min(lease.end_date, period_end)
+        if end_date < start_date:
+            return Decimal('0.00')
+
+        active_days = (end_date - start_date).days + 1
+        amount = (Decimal(lease.monthly_rent) / Decimal(month_days)) * Decimal(active_days)
+        return amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    @transaction.atomic
+    def run_monthly_recognition(run_date=None):
+        run_date = run_date or timezone.now().date()
+        period = f"{run_date.year:04d}-{run_date.month:02d}"
+
+        leases = Lease.objects.filter(
+            status='active',
+            start_date__lte=run_date,
+            end_date__gte=run_date,
+        )
+
+        for lease in leases:
+            if not lease.unearned_revenue_account or not lease.rental_income_account:
+                continue
+
+            existing = JournalEntry.objects.filter(
+                reference_type='lease',
+                reference_id=lease.id,
+                entry_type='revenue_recognition',
+                period=period,
+            ).first()
+            if existing:
+                continue
+
+            amount = LeaseRevenueRecognitionService._calculate_prorated_amount(lease, run_date)
+            if amount <= Decimal('0.00'):
+                continue
+
+            cost_center = lease.cost_center or LeaseService._get_or_create_cost_center(
+                lease.unit,
+                lease.unit.property
+            )
+            if lease.cost_center_id != cost_center.id:
+                lease.cost_center = cost_center
+                lease.save(update_fields=['cost_center'])
+
+            entry = JournalEntry.objects.create(
+                entry_type='revenue_recognition',
+                reference_type='lease',
+                reference_id=lease.id,
+                period=period,
+                description=f"Lease {lease.lease_number} revenue recognition {period}",
+            )
+
+            JournalLine.objects.create(
+                journal_entry=entry,
+                account=lease.unearned_revenue_account,
+                debit=amount,
+                credit=Decimal('0.00'),
+                cost_center=cost_center,
+                reference_type='lease',
+                reference_id=lease.id,
+            )
+
+            JournalLine.objects.create(
+                journal_entry=entry,
+                account=lease.rental_income_account,
+                debit=Decimal('0.00'),
+                credit=amount,
+                cost_center=cost_center,
+                reference_type='lease',
+                reference_id=lease.id,
+            )
     
     @staticmethod
     @transaction.atomic
@@ -409,17 +494,20 @@ class ReceiptVoucherService:
         """
         # Determine debit account based on payment method
         if receipt_voucher.payment_method == 'cash':
-            debit_account = receipt_voucher.cash_account
+            debit_account = receipt_voucher.cash_account or Account.objects.filter(account_number='1200').first()
         elif receipt_voucher.payment_method == 'bank':
-            debit_account = receipt_voucher.bank_account
+            debit_account = receipt_voucher.bank_account or Account.objects.filter(account_number='1210').first()
         elif receipt_voucher.payment_method in ['cheque', 'post_dated_cheque']:
-            debit_account = receipt_voucher.post_dated_cheques_account
+            debit_account = receipt_voucher.post_dated_cheques_account or Account.objects.filter(account_number='1230').first()
         else:
             raise ValueError(f'Unknown payment method: {receipt_voucher.payment_method}')
         
         if not debit_account:
             raise ValueError(f'No account configured for payment method: {receipt_voucher.payment_method}')
         
+        if not receipt_voucher.tenant_account:
+            receipt_voucher.tenant_account = receipt_voucher.tenant.ledger_account or Account.objects.filter(account_number='1100').first()
+
         if not receipt_voucher.tenant_account:
             raise ValueError('Tenant account is required for receipt posting')
         
@@ -439,7 +527,7 @@ class ReceiptVoucherService:
         
         # Create journal entry
         journal_entry = JournalEntry.objects.create(
-            entry_type='prepaid',
+            entry_type='receipt',
             reference_type='receipt_voucher',
             reference_id=receipt_voucher.id,
             description=f"Receipt {receipt_voucher.receipt_number} - {receipt_voucher.tenant.first_name} {receipt_voucher.tenant.last_name}"
@@ -466,8 +554,9 @@ class ReceiptVoucherService:
         )
         
         receipt_voucher.accounting_posted = True
-        receipt_voucher.status = 'submitted'
-        receipt_voucher.save()
+        if receipt_voucher.status == 'draft':
+            receipt_voucher.status = 'submitted'
+        receipt_voucher.save(update_fields=['accounting_posted', 'status', 'tenant_account'])
         
         return journal_entry
 

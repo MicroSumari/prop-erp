@@ -43,6 +43,12 @@ class JournalEntry(models.Model):
     ENTRY_TYPE_CHOICES = [
         ('prepaid', 'Prepaid Recognition'),
         ('amortization', 'Amortization'),
+        ('receipt', 'Receipt Voucher'),
+        ('invoice', 'Invoice Posting'),
+        ('payment', 'Payment Voucher'),
+        ('revenue_recognition', 'Revenue Recognition'),
+        ('cheque', 'Cheque Movement'),
+        ('manual', 'Manual Journal Entry'),
     ]
 
     entry_type = models.CharField(max_length=30, choices=ENTRY_TYPE_CHOICES)
@@ -73,3 +79,81 @@ class JournalLine(models.Model):
 
     def __str__(self):
         return f"{self.journal_entry_id} - {self.account.account_number}"
+
+
+class ChequeRegister(models.Model):
+    """Cheque register for incoming and outgoing cheques"""
+    CHEQUE_TYPE_CHOICES = [
+        ('incoming', 'Incoming'),
+        ('outgoing', 'Outgoing'),
+    ]
+    STATUS_CHOICES = [
+        ('received', 'Received'),
+        ('deposited', 'Deposited'),
+        ('cleared', 'Cleared'),
+        ('bounced', 'Bounced'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    cheque_type = models.CharField(max_length=20, choices=CHEQUE_TYPE_CHOICES)
+    cheque_number = models.CharField(max_length=50)
+    cheque_date = models.DateField()
+    amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    bank_name = models.CharField(max_length=200, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='received')
+
+    receipt_voucher = models.ForeignKey(
+        'sales.ReceiptVoucher',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cheque_registers'
+    )
+    payment_voucher = models.ForeignKey(
+        'purchase.PaymentVoucher',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cheque_registers'
+    )
+
+    cheques_received_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name='cheques_received_registers',
+        limit_choices_to={'account_type': 'asset'},
+        null=True,
+        blank=True
+    )
+    cheques_issued_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name='cheques_issued_registers',
+        limit_choices_to={'account_type': 'liability'},
+        null=True,
+        blank=True
+    )
+    bank_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name='cheque_bank_registers',
+        limit_choices_to={'account_type': 'asset'},
+        null=True,
+        blank=True
+    )
+    cost_center = models.ForeignKey(
+        CostCenter,
+        on_delete=models.PROTECT,
+        related_name='cheque_registers',
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.cheque_type} cheque {self.cheque_number} - {self.status}"

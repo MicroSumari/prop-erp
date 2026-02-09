@@ -37,6 +37,13 @@ import RentCollection from './pages/Rent/RentCollection';
 import ReceiptVoucher from './pages/Receipt/ReceiptVoucher';
 import ReceiptVoucherDetail from './pages/Receipt/ReceiptVoucherDetail';
 import ReceiptVoucherForm from './pages/Receipt/ReceiptVoucherForm';
+import CustomerInvoices from './pages/Accounting/CustomerInvoices';
+import SupplierInvoices from './pages/Accounting/SupplierInvoices';
+import PaymentVouchers from './pages/Accounting/PaymentVouchers';
+import ChequeRegister from './pages/Accounting/ChequeRegister';
+import ManualJournals from './pages/Accounting/ManualJournals';
+import TrialBalance from './pages/Accounting/TrialBalance';
+import GeneralLedger from './pages/Accounting/GeneralLedger';
 import LegalCaseForm from './pages/LegalCase/LegalCaseForm';
 import LegalCaseList from './pages/LegalCase/LegalCaseList';
 import LegalCaseDetail from './pages/LegalCase/LegalCaseDetail';
@@ -104,6 +111,13 @@ function AppContent() {
             <Route path="/receipt-vouchers/new" element={<ReceiptVoucherForm />} />
             <Route path="/receipt-vouchers/:id" element={<ReceiptVoucherDetail />} />
             <Route path="/receipt-vouchers/edit/:id" element={<ReceiptVoucherForm />} />
+            <Route path="/customer-invoices" element={<CustomerInvoices />} />
+            <Route path="/supplier-invoices" element={<SupplierInvoices />} />
+            <Route path="/payment-vouchers" element={<PaymentVouchers />} />
+            <Route path="/cheque-register" element={<ChequeRegister />} />
+            <Route path="/manual-journals" element={<ManualJournals />} />
+            <Route path="/trial-balance" element={<TrialBalance />} />
+            <Route path="/general-ledger" element={<GeneralLedger />} />
             <Route path="/lease-renewal" element={<LeaseRenewal />} />
             <Route path="/lease-renewal/new" element={<LeaseRenewalForm />} />
             <Route path="/lease-renewal/:id" element={<LeaseRenewalDetail />} />

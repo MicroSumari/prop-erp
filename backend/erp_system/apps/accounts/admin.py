@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Account, CostCenter, JournalEntry, JournalLine
+from .models import Account, CostCenter, JournalEntry, JournalLine, ChequeRegister
 
 
 @admin.register(Account)
@@ -25,3 +25,10 @@ class JournalEntryAdmin(admin.ModelAdmin):
 class JournalLineAdmin(admin.ModelAdmin):
     list_display = ['journal_entry', 'account', 'debit', 'credit', 'cost_center']
     list_filter = ['account', 'cost_center']
+
+
+@admin.register(ChequeRegister)
+class ChequeRegisterAdmin(admin.ModelAdmin):
+    list_display = ['cheque_type', 'cheque_number', 'amount', 'status', 'cheque_date']
+    list_filter = ['cheque_type', 'status']
+    search_fields = ['cheque_number', 'bank_name']

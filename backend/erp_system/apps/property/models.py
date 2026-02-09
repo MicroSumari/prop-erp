@@ -147,7 +147,7 @@ class Tenant(models.Model):
         null=True,
         blank=True,
         related_name='tenant_ledgers',
-        limit_choices_to={'account_type': 'asset'},
+        limit_choices_to={'account_type__in': ['asset', 'liability']},
         help_text="Customer/Supplier account in chart of accounts"
     )
 
@@ -212,6 +212,7 @@ class Lease(models.Model):
     # Accounting Fields
     cost_center = models.ForeignKey(CostCenter, on_delete=models.SET_NULL, null=True, blank=True, related_name='leases')
     unearned_revenue_account = models.ForeignKey('accounts.Account', on_delete=models.SET_NULL, null=True, blank=True, related_name='lease_unearned_revenue', limit_choices_to={'account_type': 'liability'})
+    rental_income_account = models.ForeignKey('accounts.Account', on_delete=models.SET_NULL, null=True, blank=True, related_name='lease_rental_income', limit_choices_to={'account_type': 'income'})
     refundable_deposit_account = models.ForeignKey('accounts.Account', on_delete=models.SET_NULL, null=True, blank=True, related_name='lease_deposits', limit_choices_to={'account_type': 'liability'})
     other_charges_account = models.ForeignKey('accounts.Account', on_delete=models.SET_NULL, null=True, blank=True, related_name='lease_other_charges', limit_choices_to={'account_type': 'income'})
     accounting_posted = models.BooleanField(default=False, help_text="Whether accounting entry has been posted")

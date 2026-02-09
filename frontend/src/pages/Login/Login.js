@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import './Login.css';
 
 function Login() {
@@ -9,6 +10,13 @@ function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { isAuthenticated, login } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -27,9 +35,8 @@ function Login() {
       const data = await response.json();
 
       if (response.ok && data.token) {
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('username', data.username);
-        navigate('/');
+        login(data.token, data.username);
+        navigate('/', { replace: true });
       } else {
         setError(data.error || 'Invalid username or password');
       }

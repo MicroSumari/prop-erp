@@ -114,3 +114,87 @@ class ReceiptVoucher(models.Model):
             else:
                 self.receipt_number = "RV-00001"
         super().save(*args, **kwargs)
+
+
+class CustomerInvoice(models.Model):
+    """Customer invoice for tenant billing"""
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('paid', 'Paid'),
+        ('void', 'Void'),
+    ]
+
+    invoice_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name='customer_invoices')
+    lease = models.ForeignKey(
+        'property.Lease',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customer_invoices'
+    )
+    invoice_date = models.DateField()
+    due_date = models.DateField(blank=True, null=True)
+
+    amount = models.DecimalField(max_digits=15, decimal_places=2, validators=[MinValueValidator(0)])
+    is_taxable = models.BooleanField(default=False)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    income_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name='customer_invoice_income',
+        limit_choices_to={'account_type': 'income'}
+    )
+    tax_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name='customer_invoice_tax',
+        limit_choices_to={'account_type': 'liability'},
+        null=True,
+        blank=True
+    )
+    tenant_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name='customer_invoice_receivable',
+        limit_choices_to={'account_type': 'asset'}
+    )
+    cost_center = models.ForeignKey(
+        CostCenter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customer_invoices'
+    )
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    notes = models.TextField(blank=True)
+    accounting_posted = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-invoice_date']
+        verbose_name = 'Customer Invoice'
+        verbose_name_plural = 'Customer Invoices'
+
+    def __str__(self):
+        return f"CI-{self.invoice_number} - {self.tenant.first_name} {self.tenant.last_name}"
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number:
+            last_invoice = CustomerInvoice.objects.order_by('-id').first()
+            if last_invoice and last_invoice.invoice_number:
+                try:
+                    last_num = int(last_invoice.invoice_number.split('-')[-1])
+                    self.invoice_number = f"CI-{last_num + 1:05d}"
+                except (ValueError, IndexError):
+                    self.invoice_number = "CI-00001"
+            else:
+                self.invoice_number = "CI-00001"
+        super().save(*args, **kwargs)

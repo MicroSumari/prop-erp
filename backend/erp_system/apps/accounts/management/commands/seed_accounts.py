@@ -49,6 +49,11 @@ class Command(BaseCommand):
                     'account_type': 'income',
                 },
                 {
+                    'account_number': '4005',
+                    'account_name': 'Service Income',
+                    'account_type': 'income',
+                },
+                {
                     'account_number': '4100',
                     'account_name': 'Other Tenant Charges',
                     'account_type': 'income',
@@ -57,6 +62,16 @@ class Command(BaseCommand):
                     'account_number': '4200',
                     'account_name': 'Early Termination Penalties',
                     'account_type': 'income',
+                },
+                {
+                    'account_number': '2300',
+                    'account_name': 'Tax Payable (VAT/GST)',
+                    'account_type': 'liability',
+                },
+                {
+                    'account_number': '2400',
+                    'account_name': 'Supplier Payable',
+                    'account_type': 'liability',
                 },
                 
                 # Cash & Bank
@@ -74,6 +89,16 @@ class Command(BaseCommand):
                     'account_number': '1220',
                     'account_name': 'Post-Dated Cheques Received',
                     'account_type': 'asset',
+                },
+                {
+                    'account_number': '1230',
+                    'account_name': 'Cheques Received',
+                    'account_type': 'asset',
+                },
+                {
+                    'account_number': '1240',
+                    'account_name': 'Cheques Issued',
+                    'account_type': 'liability',
                 },
                 
                 # Maintenance/Expense

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import SalesOrder, ReceiptVoucher
+from .models import SalesOrder, ReceiptVoucher, CustomerInvoice
 from erp_system.apps.property.models import Tenant
 
 
@@ -24,9 +24,12 @@ class ReceiptVoucherSerializer(serializers.ModelSerializer):
         model = ReceiptVoucher
         fields = [
             'id', 'receipt_number', 'tenant', 'tenant_details', 
+            'lease',
             'payment_date', 'amount', 'payment_method',
             'bank_name', 'cheque_number', 'cheque_date',
             'status', 'cleared_date', 'description', 'notes',
+            'cash_account', 'bank_account', 'post_dated_cheques_account',
+            'tenant_account', 'cost_center', 'accounting_posted',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'receipt_number', 'created_at', 'updated_at', 'tenant_details']
@@ -61,4 +64,15 @@ class ReceiptVoucherSerializer(serializers.ModelSerializer):
                     "Cheque date is required for cheque payments."
                 )
         
+        return data
+
+
+class CustomerInvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerInvoice
+        fields = '__all__'
+
+    def validate(self, data):
+        if data.get('is_taxable') and not data.get('tax_account'):
+            raise serializers.ValidationError('Tax account is required for taxable invoices.')
         return data
