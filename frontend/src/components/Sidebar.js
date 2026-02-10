@@ -90,37 +90,55 @@ function Sidebar({ show, handleClose }) {
         {
           label: 'Customer Invoices',
           icon: 'fas fa-file-invoice',
-          link: '/customer-invoices',
+          link: '/accounting/customer-invoices',
+        },
+        {
+          label: 'Accounts',
+          icon: 'fas fa-book',
+          link: '/accounting/accounts',
         },
         {
           label: 'Supplier Invoices',
           icon: 'fas fa-file-invoice-dollar',
-          link: '/supplier-invoices',
+          link: '/accounting/supplier-invoices',
         },
         {
           label: 'Payment Vouchers',
           icon: 'fas fa-hand-holding-usd',
-          link: '/payment-vouchers',
+          link: '/accounting/payment-vouchers',
         },
         {
           label: 'Cheque Register',
           icon: 'fas fa-money-check',
-          link: '/cheque-register',
+          link: '/accounting/cheque-register',
         },
         {
           label: 'Manual Journals',
           icon: 'fas fa-book',
-          link: '/manual-journals',
+          link: '/accounting/manual-journals',
         },
         {
           label: 'Trial Balance',
           icon: 'fas fa-balance-scale',
-          link: '/trial-balance',
+          link: '/accounting/trial-balance',
         },
         {
           label: 'General Ledger',
           icon: 'fas fa-book-open',
-          link: '/general-ledger',
+          link: '/accounting/general-ledger',
+        },
+      ],
+    },
+    {
+      id: 'system',
+      label: 'System',
+      icon: 'fas fa-sliders-h',
+      isCollapsible: true,
+      subsections: [
+        {
+          label: 'System Configuration',
+          icon: 'fas fa-sliders-h',
+          link: '/system/configuration',
         },
       ],
     },

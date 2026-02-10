@@ -23,6 +23,16 @@ const ManualJournals = () => {
   };
   const [formData, setFormData] = useState(initialFormData);
 
+  const resolveAccountName = (id) => {
+    const account = accounts.find((a) => a.id === id);
+    return account ? `${account.account_number} - ${account.account_name}` : 'N/A';
+  };
+
+  const resolveCostCenter = (id) => {
+    const center = costCenters.find((c) => c.id === id);
+    return center ? `${center.code} - ${center.name}` : 'N/A';
+  };
+
   const normalizeList = (data) => (Array.isArray(data) ? data : (data?.results || []));
 
   const fetchData = async () => {
@@ -121,7 +131,10 @@ const ManualJournals = () => {
   return (
     <Container fluid>
       <div className="page-header mb-4">
-        <h1>Manual Journal Entries</h1>
+        <h1>
+          <i className="fas fa-book me-2"></i>
+          Manual Journal Entries
+        </h1>
         <Button variant="primary" onClick={openCreate}>
           <i className="fas fa-plus me-2"></i>
           Add Manual Journal
@@ -143,32 +156,40 @@ const ManualJournals = () => {
               </tr>
             </thead>
             <tbody>
-              {entries.map((e) => (
-                <tr key={e.id}>
-                  <td>{e.id}</td>
-                  <td>{e.entry_date}</td>
-                  <td>{e.description}</td>
-                  <td>
-                    <Button
-                      variant="info"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => openView(e)}
-                      title="View journal"
-                    >
-                      <i className="fas fa-eye"></i>
-                    </Button>
-                    <Button
-                      variant="warning"
-                      size="sm"
-                      onClick={() => openEdit(e)}
-                      title="Edit journal"
-                    >
-                      <i className="fas fa-edit"></i>
-                    </Button>
+              {entries.length > 0 ? (
+                entries.map((e) => (
+                  <tr key={e.id}>
+                    <td>{e.id}</td>
+                    <td>{e.entry_date}</td>
+                    <td>{e.description}</td>
+                    <td>
+                      <Button
+                        variant="info"
+                        size="sm"
+                        className="me-2"
+                        onClick={() => openView(e)}
+                        title="View journal"
+                      >
+                        <i className="fas fa-eye"></i>
+                      </Button>
+                      <Button
+                        variant="warning"
+                        size="sm"
+                        onClick={() => openEdit(e)}
+                        title="Edit journal"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center text-muted py-4">
+                    No manual journals yet. Click "Add Manual Journal" to create one.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </Table>
         </Card.Body>
@@ -246,6 +267,21 @@ const ManualJournals = () => {
               <div><strong>ID:</strong> {viewItem.id}</div>
               <div><strong>Date:</strong> {viewItem.entry_date}</div>
               <div><strong>Description:</strong> {viewItem.description}</div>
+              {Array.isArray(viewItem.lines) && viewItem.lines.length > 0 && (
+                <div>
+                  <strong>Lines:</strong>
+                  <div className="mt-2">
+                    {viewItem.lines.map((line, idx) => (
+                      <div key={idx} className="border rounded p-2 mb-2">
+                        <div><strong>Account:</strong> {resolveAccountName(line.account)}</div>
+                        <div><strong>Debit:</strong> {line.debit}</div>
+                        <div><strong>Credit:</strong> {line.credit}</div>
+                        <div><strong>Cost Center:</strong> {resolveCostCenter(line.cost_center)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Modal.Body>

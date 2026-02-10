@@ -2,7 +2,16 @@ from rest_framework import serializers
 from decimal import Decimal
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from .models import Account, CostCenter, JournalEntry, JournalLine, ChequeRegister
+from .models import (
+    Account,
+    CostCenter,
+    JournalEntry,
+    JournalLine,
+    ChequeRegister,
+    TransactionAccountMapping,
+    PropertyClassification,
+    ReceiptPaymentMapping,
+)
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -85,3 +94,21 @@ class ManualJournalEntrySerializer(serializers.Serializer):
             )
 
         return entry
+
+
+class TransactionAccountMappingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransactionAccountMapping
+        fields = '__all__'
+
+
+class PropertyClassificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PropertyClassification
+        fields = '__all__'
+
+
+class ReceiptPaymentMappingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReceiptPaymentMapping
+        fields = '__all__'

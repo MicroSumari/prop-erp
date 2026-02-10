@@ -6,6 +6,7 @@ from django.db import transaction
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 from erp_system.apps.accounts.models import Account, JournalEntry, JournalLine, CostCenter
+from erp_system.apps.accounts.services import require_transaction_mapping
 from erp_system.apps.sales.models import ReceiptVoucher, CustomerInvoice
 
 
@@ -15,6 +16,7 @@ class ReceiptVoucherService:
     @staticmethod
     @transaction.atomic
     def post_receipt_voucher(receipt_voucher):
+        require_transaction_mapping('receipt_voucher')
         """
         Post receipt voucher accounting entry:
         
@@ -98,6 +100,7 @@ class CustomerInvoiceService:
     @staticmethod
     @transaction.atomic
     def post_customer_invoice(invoice: CustomerInvoice):
+        require_transaction_mapping('customer_invoice')
         if invoice.accounting_posted:
             return None
 

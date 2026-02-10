@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import apiClient from '../../services/api';
 import './Login.css';
 
 function Login() {
@@ -24,17 +25,10 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
+      const response = await apiClient.post('/auth/login/', { username, password });
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok && data.token) {
+      if (data?.token) {
         login(data.token, data.username);
         navigate('/', { replace: true });
       } else {

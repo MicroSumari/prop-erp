@@ -96,7 +96,10 @@ function PropertyList() {
   return (
     <Container fluid className="property-list">
       <div className="page-header mb-4">
-        <h1>Properties</h1>
+        <h1>
+          <i className="fas fa-building me-2"></i>
+          Properties
+        </h1>
         <Button variant="primary" onClick={() => navigate('/properties/new')}>
           <i className="fas fa-plus me-2"></i>
           Add Property

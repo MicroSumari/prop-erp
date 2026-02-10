@@ -22,7 +22,12 @@ const TrialBalance = () => {
 
   return (
     <Container fluid>
-      <h2 className="mb-4">Trial Balance</h2>
+      <div className="page-header mb-4">
+        <h1>
+          <i className="fas fa-balance-scale me-2"></i>
+          Trial Balance
+        </h1>
+      </div>
       {error && <Alert variant="danger">{error}</Alert>}
 
       <Card className="mb-4">
@@ -54,14 +59,22 @@ const TrialBalance = () => {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.account__id}>
-                  <td>{r.account__account_number}</td>
-                  <td>{r.account__account_name}</td>
-                  <td>{r.total_debit}</td>
-                  <td>{r.total_credit}</td>
+              {rows.length > 0 ? (
+                rows.map((r) => (
+                  <tr key={r.account__id}>
+                    <td>{r.account__account_number}</td>
+                    <td>{r.account__account_name}</td>
+                    <td>{r.total_debit}</td>
+                    <td>{r.total_credit}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center text-muted py-4">
+                    No trial balance data. Choose a date range and click Load.
+                  </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </Table>
         </Card.Body>

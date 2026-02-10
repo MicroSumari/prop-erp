@@ -225,7 +225,9 @@ const ReceiptVoucher = () => {
     <Container className="mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1>Receipt Vouchers</h1>
+          <div className="page-header mb-4">
+            <h1>Receipt Vouchers</h1>
+          </div>
           <p className="text-muted">Manage tenant payments (Cash / Bank / Cheque)</p>
         </div>
       </div>

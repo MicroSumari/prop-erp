@@ -256,7 +256,9 @@ const LeaseTermination = () => {
     <Container className="mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1>Lease Terminations</h1>
+          <div className="page-header mb-4">
+            <h1>Lease Terminations</h1>
+          </div>
           <p className="text-muted">Handle normal and early termination with accounting entries</p>
         </div>
       </div>

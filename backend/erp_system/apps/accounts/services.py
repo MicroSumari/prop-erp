@@ -1,7 +1,7 @@
 from decimal import Decimal
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from .models import JournalEntry, JournalLine, ChequeRegister
+from .models import JournalEntry, JournalLine, ChequeRegister, TransactionAccountMapping
 
 
 class ChequeRegisterService:
@@ -74,3 +74,13 @@ class ChequeRegisterService:
         cheque.status = 'cleared'
         cheque.save(update_fields=['status'])
         return entry
+
+
+def require_transaction_mapping(transaction_type: str) -> TransactionAccountMapping:
+    mapping = TransactionAccountMapping.objects.filter(
+        transaction_type=transaction_type,
+        is_active=True,
+    ).first()
+    if not mapping:
+        raise ValidationError('Accounting configuration not defined for this transaction type.')
+    return mapping

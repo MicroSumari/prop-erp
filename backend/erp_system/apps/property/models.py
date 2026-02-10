@@ -49,6 +49,15 @@ class Property(models.Model):
     # Ownership & Dates
     owner = models.ForeignKey(User, on_delete=models.PROTECT, related_name='properties', null=True, blank=True)
     acquisition_date = models.DateField()
+
+    # Classification
+    classification = models.ForeignKey(
+        'accounts.PropertyClassification',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='properties'
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

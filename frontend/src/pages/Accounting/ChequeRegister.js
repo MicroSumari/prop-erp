@@ -11,6 +11,8 @@ const ChequeRegister = () => {
   const [viewItem, setViewItem] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({
+    cheque_type: '',
+    cheque_number: '',
     cheque_date: '',
     amount: '',
     bank_name: '',
@@ -52,6 +54,8 @@ const ChequeRegister = () => {
   const openEdit = (item) => {
     setEditingId(item.id);
     setEditData({
+      cheque_type: item.cheque_type || '',
+      cheque_number: item.cheque_number || '',
       cheque_date: item.cheque_date || '',
       amount: item.amount || '',
       bank_name: item.bank_name || '',
@@ -65,7 +69,7 @@ const ChequeRegister = () => {
     setError('');
     setSuccess('');
     try {
-      await apiClient.put(`/accounts/cheque-registers/${editingId}/`, {
+      await apiClient.patch(`/accounts/cheque-registers/${editingId}/`, {
         ...editData,
         amount: parseFloat(editData.amount || 0),
       });
@@ -81,7 +85,10 @@ const ChequeRegister = () => {
   return (
     <Container fluid>
       <div className="page-header mb-4">
-        <h1>Cheque Register</h1>
+        <h1>
+          <i className="fas fa-money-check me-2"></i>
+          Cheque Register
+        </h1>
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
@@ -101,40 +108,48 @@ const ChequeRegister = () => {
               </tr>
             </thead>
             <tbody>
-              {cheques.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.cheque_type}</td>
-                  <td>{c.cheque_number}</td>
-                  <td>{c.cheque_date}</td>
-                  <td>{c.amount}</td>
-                  <td>{c.status}</td>
-                  <td>
-                    <div className="d-flex gap-2">
-                      <Button
-                        variant="info"
-                        size="sm"
-                        onClick={() => openView(c)}
-                        title="View cheque"
-                      >
-                        <i className="fas fa-eye"></i>
-                      </Button>
-                      <Button
-                        variant="warning"
-                        size="sm"
-                        onClick={() => openEdit(c)}
-                        title="Edit cheque"
-                      >
-                        <i className="fas fa-edit"></i>
-                      </Button>
-                      {c.status !== 'cleared' && (
-                        <Button size="sm" variant="success" onClick={() => handleClear(c.id)}>
-                          Mark Cleared
+              {cheques.length > 0 ? (
+                cheques.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.cheque_type}</td>
+                    <td>{c.cheque_number}</td>
+                    <td>{c.cheque_date}</td>
+                    <td>{c.amount}</td>
+                    <td>{c.status}</td>
+                    <td>
+                      <div className="d-flex gap-2">
+                        <Button
+                          variant="info"
+                          size="sm"
+                          onClick={() => openView(c)}
+                          title="View cheque"
+                        >
+                          <i className="fas fa-eye"></i>
                         </Button>
-                      )}
-                    </div>
+                        <Button
+                          variant="warning"
+                          size="sm"
+                          onClick={() => openEdit(c)}
+                          title="Edit cheque"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </Button>
+                        {c.status !== 'cleared' && (
+                          <Button size="sm" variant="success" onClick={() => handleClear(c.id)}>
+                            Mark Cleared
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="text-center text-muted py-4">
+                    No cheques found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </Table>
         </Card.Body>
@@ -153,6 +168,8 @@ const ChequeRegister = () => {
               <div><strong>Amount:</strong> {viewItem.amount}</div>
               <div><strong>Status:</strong> {viewItem.status}</div>
               <div><strong>Bank:</strong> {viewItem.bank_name || 'N/A'}</div>
+              <div><strong>Receipt Voucher:</strong> {viewItem.receipt_voucher || 'N/A'}</div>
+              <div><strong>Payment Voucher:</strong> {viewItem.payment_voucher || 'N/A'}</div>
             </div>
           )}
         </Modal.Body>

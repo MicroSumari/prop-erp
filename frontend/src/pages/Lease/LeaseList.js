@@ -53,7 +53,7 @@ function LeaseList() {
 
   return (
     <Container fluid className="mt-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="page-header mb-4">
         <h1>
           <i className="fas fa-file-contract me-2"></i>
           Leases

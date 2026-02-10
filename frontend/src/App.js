@@ -44,6 +44,8 @@ import ChequeRegister from './pages/Accounting/ChequeRegister';
 import ManualJournals from './pages/Accounting/ManualJournals';
 import TrialBalance from './pages/Accounting/TrialBalance';
 import GeneralLedger from './pages/Accounting/GeneralLedger';
+import Accounts from './pages/Accounting/Accounts';
+import SystemConfig from './pages/Accounting/SystemConfig';
 import LegalCaseForm from './pages/LegalCase/LegalCaseForm';
 import LegalCaseList from './pages/LegalCase/LegalCaseList';
 import LegalCaseDetail from './pages/LegalCase/LegalCaseDetail';
@@ -111,13 +113,15 @@ function AppContent() {
             <Route path="/receipt-vouchers/new" element={<ReceiptVoucherForm />} />
             <Route path="/receipt-vouchers/:id" element={<ReceiptVoucherDetail />} />
             <Route path="/receipt-vouchers/edit/:id" element={<ReceiptVoucherForm />} />
-            <Route path="/customer-invoices" element={<CustomerInvoices />} />
-            <Route path="/supplier-invoices" element={<SupplierInvoices />} />
-            <Route path="/payment-vouchers" element={<PaymentVouchers />} />
-            <Route path="/cheque-register" element={<ChequeRegister />} />
-            <Route path="/manual-journals" element={<ManualJournals />} />
-            <Route path="/trial-balance" element={<TrialBalance />} />
-            <Route path="/general-ledger" element={<GeneralLedger />} />
+            <Route path="/accounting/customer-invoices" element={<CustomerInvoices />} />
+            <Route path="/accounting/supplier-invoices" element={<SupplierInvoices />} />
+            <Route path="/accounting/payment-vouchers" element={<PaymentVouchers />} />
+            <Route path="/accounting/cheque-register" element={<ChequeRegister />} />
+            <Route path="/accounting/manual-journals" element={<ManualJournals />} />
+            <Route path="/accounting/trial-balance" element={<TrialBalance />} />
+            <Route path="/accounting/general-ledger" element={<GeneralLedger />} />
+            <Route path="/accounting/accounts" element={<Accounts />} />
+            <Route path="/system/configuration" element={<SystemConfig />} />
             <Route path="/lease-renewal" element={<LeaseRenewal />} />
             <Route path="/lease-renewal/new" element={<LeaseRenewalForm />} />
             <Route path="/lease-renewal/:id" element={<LeaseRenewalDetail />} />

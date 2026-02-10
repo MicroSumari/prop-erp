@@ -242,7 +242,9 @@ const LeaseRenewal = () => {
     <Container className="mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1>Lease Renewals</h1>
+          <div className="page-header mb-4">
+            <h1>Lease Renewals</h1>
+          </div>
           <p className="text-muted">Extend existing leases with new terms and conditions</p>
         </div>
       </div>

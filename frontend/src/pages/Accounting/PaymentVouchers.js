@@ -30,6 +30,26 @@ const PaymentVouchers = () => {
   };
   const [formData, setFormData] = useState(initialFormData);
 
+  const resolveAccountName = (id) => {
+    const account = accounts.find((a) => a.id === id);
+    return account ? `${account.account_number} - ${account.account_name}` : 'N/A';
+  };
+
+  const resolveCostCenter = (id) => {
+    const center = costCenters.find((c) => c.id === id);
+    return center ? `${center.code} - ${center.name}` : 'N/A';
+  };
+
+  const resolveSupplierName = (id) => {
+    const supplier = suppliers.find((s) => s.id === id);
+    return supplier ? `${supplier.first_name} ${supplier.last_name}` : 'N/A';
+  };
+
+  const resolveInvoiceNumber = (id) => {
+    const invoice = supplierInvoices.find((i) => i.id === id);
+    return invoice ? invoice.invoice_number : 'N/A';
+  };
+
   const normalizeList = (data) => (Array.isArray(data) ? data : (data?.results || []));
 
   const fetchData = async () => {
@@ -121,7 +141,10 @@ const PaymentVouchers = () => {
   return (
     <Container fluid>
       <div className="page-header mb-4">
-        <h1>Payment Vouchers</h1>
+        <h1>
+          <i className="fas fa-hand-holding-usd me-2"></i>
+          Payment Vouchers
+        </h1>
         <Button variant="primary" onClick={openCreate}>
           <i className="fas fa-plus me-2"></i>
           Add Payment Voucher
@@ -146,35 +169,43 @@ const PaymentVouchers = () => {
               </tr>
             </thead>
             <tbody>
-              {vouchers.map((v) => (
-                <tr key={v.id}>
-                  <td>{v.voucher_number}</td>
-                  <td>{v.supplier}</td>
-                  <td>{v.payment_date}</td>
-                  <td>{v.amount}</td>
-                  <td>{v.payment_method}</td>
-                  <td>{v.status}</td>
-                  <td>
-                    <Button
-                      variant="info"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => openView(v)}
-                      title="View voucher"
-                    >
-                      <i className="fas fa-eye"></i>
-                    </Button>
-                    <Button
-                      variant="warning"
-                      size="sm"
-                      onClick={() => openEdit(v)}
-                      title="Edit voucher"
-                    >
-                      <i className="fas fa-edit"></i>
-                    </Button>
+              {vouchers.length > 0 ? (
+                vouchers.map((v) => (
+                  <tr key={v.id}>
+                    <td>{v.voucher_number}</td>
+                    <td>{v.supplier}</td>
+                    <td>{v.payment_date}</td>
+                    <td>{v.amount}</td>
+                    <td>{v.payment_method}</td>
+                    <td>{v.status}</td>
+                    <td>
+                      <Button
+                        variant="info"
+                        size="sm"
+                        className="me-2"
+                        onClick={() => openView(v)}
+                        title="View voucher"
+                      >
+                        <i className="fas fa-eye"></i>
+                      </Button>
+                      <Button
+                        variant="warning"
+                        size="sm"
+                        onClick={() => openEdit(v)}
+                        title="Edit voucher"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="text-center text-muted py-4">
+                    No payment vouchers yet. Click "Add Payment Voucher" to create one.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </Table>
         </Card.Body>
@@ -342,11 +373,18 @@ const PaymentVouchers = () => {
           {viewItem && (
             <div className="d-grid gap-2">
               <div><strong>Voucher #:</strong> {viewItem.voucher_number}</div>
-              <div><strong>Supplier:</strong> {viewItem.supplier}</div>
+              <div><strong>Supplier:</strong> {resolveSupplierName(viewItem.supplier)}</div>
+              <div><strong>Supplier Invoice:</strong> {resolveInvoiceNumber(viewItem.supplier_invoice)}</div>
               <div><strong>Date:</strong> {viewItem.payment_date}</div>
               <div><strong>Amount:</strong> {viewItem.amount}</div>
               <div><strong>Method:</strong> {viewItem.payment_method}</div>
               <div><strong>Status:</strong> {viewItem.status}</div>
+              <div><strong>Cash Account:</strong> {resolveAccountName(viewItem.cash_account)}</div>
+              <div><strong>Bank Account:</strong> {resolveAccountName(viewItem.bank_account)}</div>
+              <div><strong>Cheques Issued Account:</strong> {resolveAccountName(viewItem.cheques_issued_account)}</div>
+              <div><strong>Supplier Account:</strong> {resolveAccountName(viewItem.supplier_account)}</div>
+              <div><strong>Cost Center:</strong> {resolveCostCenter(viewItem.cost_center)}</div>
+              {viewItem.description && <div><strong>Description:</strong> {viewItem.description}</div>}
             </div>
           )}
         </Modal.Body>

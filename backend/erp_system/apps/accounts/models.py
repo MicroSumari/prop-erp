@@ -38,6 +38,71 @@ class Account(models.Model):
         return f"{self.account_number} - {self.account_name}"
 
 
+class TransactionAccountMapping(models.Model):
+    """Maps transaction types to default accounts"""
+    TRANSACTION_TYPE_CHOICES = [
+        ('lease_creation', 'Lease Creation'),
+        ('receipt_voucher', 'Receipt Voucher'),
+        ('customer_invoice', 'Customer Invoice'),
+        ('supplier_invoice', 'Supplier Invoice'),
+        ('payment_voucher', 'Payment Voucher'),
+        ('revenue_recognition', 'Revenue Recognition'),
+        ('maintenance_request', 'Maintenance Request'),
+    ]
+
+    transaction_type = models.CharField(max_length=50, choices=TRANSACTION_TYPE_CHOICES, unique=True)
+    debit_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='tx_map_debit')
+    credit_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='tx_map_credit')
+    cost_center = models.ForeignKey(CostCenter, on_delete=models.SET_NULL, null=True, blank=True)
+    tax_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='tx_map_tax', null=True, blank=True)
+    bank_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='tx_map_bank', null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.transaction_type} mapping"
+
+
+class PropertyClassification(models.Model):
+    """Property classification with default accounting setup"""
+    name = models.CharField(max_length=100, unique=True)
+    default_revenue_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='property_revenue_defaults')
+    default_expense_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='property_expense_defaults')
+    default_cost_center = models.ForeignKey(CostCenter, on_delete=models.SET_NULL, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class ReceiptPaymentMapping(models.Model):
+    """Receipt/Payment classification mapping"""
+    MAPPING_TYPE_CHOICES = [
+        ('receipt', 'Receipt'),
+        ('payment', 'Payment'),
+    ]
+
+    name = models.CharField(max_length=100)
+    mapping_type = models.CharField(max_length=20, choices=MAPPING_TYPE_CHOICES)
+    debit_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='rp_map_debit')
+    credit_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='rp_map_credit')
+    tax_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='rp_map_tax', null=True, blank=True)
+    bank_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='rp_map_bank', null=True, blank=True)
+    is_taxable = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('name', 'mapping_type')
+
+    def __str__(self):
+        return f"{self.mapping_type}: {self.name}"
+
+
 class JournalEntry(models.Model):
     """Journal entry header"""
     ENTRY_TYPE_CHOICES = [

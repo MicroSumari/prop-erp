@@ -7,6 +7,9 @@ from .views import (
     JournalLineViewSet,
     ChequeRegisterViewSet,
     ManualJournalEntryViewSet,
+    TransactionAccountMappingViewSet,
+    PropertyClassificationViewSet,
+    ReceiptPaymentMappingViewSet,
 )
 
 router = DefaultRouter()
@@ -16,6 +19,9 @@ router.register(r'journal-entries', JournalEntryViewSet)
 router.register(r'journal-lines', JournalLineViewSet)
 router.register(r'cheque-registers', ChequeRegisterViewSet)
 router.register(r'manual-journals', ManualJournalEntryViewSet, basename='manual-journals')
+router.register(r'transaction-mappings', TransactionAccountMappingViewSet)
+router.register(r'property-classifications', PropertyClassificationViewSet)
+router.register(r'receipt-payment-mappings', ReceiptPaymentMappingViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

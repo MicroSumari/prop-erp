@@ -2,7 +2,16 @@ from django.db.models import Sum
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Account, CostCenter, JournalEntry, JournalLine, ChequeRegister
+from .models import (
+    Account,
+    CostCenter,
+    JournalEntry,
+    JournalLine,
+    ChequeRegister,
+    TransactionAccountMapping,
+    PropertyClassification,
+    ReceiptPaymentMapping,
+)
 from .serializers import (
     AccountSerializer,
     CostCenterSerializer,
@@ -10,6 +19,9 @@ from .serializers import (
     JournalLineSerializer,
     ChequeRegisterSerializer,
     ManualJournalEntrySerializer,
+    TransactionAccountMappingSerializer,
+    PropertyClassificationSerializer,
+    ReceiptPaymentMappingSerializer,
 )
 
 
@@ -112,3 +124,18 @@ class ManualJournalEntryViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
         entry = serializer.save()
         return Response(JournalEntrySerializer(entry).data, status=status.HTTP_201_CREATED)
+
+
+class TransactionAccountMappingViewSet(viewsets.ModelViewSet):
+    queryset = TransactionAccountMapping.objects.all()
+    serializer_class = TransactionAccountMappingSerializer
+
+
+class PropertyClassificationViewSet(viewsets.ModelViewSet):
+    queryset = PropertyClassification.objects.all()
+    serializer_class = PropertyClassificationSerializer
+
+
+class ReceiptPaymentMappingViewSet(viewsets.ModelViewSet):
+    queryset = ReceiptPaymentMapping.objects.all()
+    serializer_class = ReceiptPaymentMappingSerializer

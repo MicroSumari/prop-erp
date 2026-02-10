@@ -8,6 +8,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.db import transaction
 from django.utils import timezone
 from erp_system.apps.accounts.models import Account, JournalEntry, JournalLine, CostCenter
+from erp_system.apps.accounts.services import require_transaction_mapping
 from erp_system.apps.property.models import Lease, LeaseRenewal, LeaseTermination, RentalLegalCase, RentalLegalCaseStatusHistory, Unit
 
 
@@ -20,6 +21,8 @@ class LeaseService:
         Get or create cost center for lease.
         Uses unit-level cost center if available, otherwise property-level.
         """
+        if property_obj.classification and property_obj.classification.default_cost_center:
+            return property_obj.classification.default_cost_center
         if unit and unit.cost_center:
             return unit.cost_center
         
@@ -56,6 +59,8 @@ class LeaseService:
         
         All amounts must be provided by caller.
         """
+        require_transaction_mapping('lease_creation')
+
         # Extract accounting data
         unearned_account = lease_data.pop('unearned_revenue_account', None)
         deposit_account = lease_data.pop('refundable_deposit_account', None)
@@ -68,6 +73,9 @@ class LeaseService:
         cost_center = LeaseService._get_or_create_cost_center(lease.unit, lease.unit.property)
         lease.cost_center = cost_center
         
+        if not lease.rental_income_account and lease.unit.property.classification:
+            lease.rental_income_account = lease.unit.property.classification.default_revenue_account
+
         # Validate accounts exist
         if not unearned_account or not deposit_account:
             raise ValueError('Unearned Revenue and Refundable Deposit accounts are required')
@@ -279,6 +287,7 @@ class LeaseRevenueRecognitionService:
     @staticmethod
     @transaction.atomic
     def run_monthly_recognition(run_date=None):
+        require_transaction_mapping('revenue_recognition')
         run_date = run_date or timezone.now().date()
         period = f"{run_date.year:04d}-{run_date.month:02d}"
 

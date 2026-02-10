@@ -1,5 +1,14 @@
 from django.contrib import admin
-from .models import Account, CostCenter, JournalEntry, JournalLine, ChequeRegister
+from .models import (
+    Account,
+    CostCenter,
+    JournalEntry,
+    JournalLine,
+    ChequeRegister,
+    TransactionAccountMapping,
+    PropertyClassification,
+    ReceiptPaymentMapping,
+)
 
 
 @admin.register(Account)
@@ -32,3 +41,21 @@ class ChequeRegisterAdmin(admin.ModelAdmin):
     list_display = ['cheque_type', 'cheque_number', 'amount', 'status', 'cheque_date']
     list_filter = ['cheque_type', 'status']
     search_fields = ['cheque_number', 'bank_name']
+
+
+@admin.register(TransactionAccountMapping)
+class TransactionAccountMappingAdmin(admin.ModelAdmin):
+    list_display = ['transaction_type', 'debit_account', 'credit_account', 'is_active']
+    list_filter = ['transaction_type', 'is_active']
+
+
+@admin.register(PropertyClassification)
+class PropertyClassificationAdmin(admin.ModelAdmin):
+    list_display = ['name', 'default_revenue_account', 'default_expense_account', 'is_active']
+    list_filter = ['is_active']
+
+
+@admin.register(ReceiptPaymentMapping)
+class ReceiptPaymentMappingAdmin(admin.ModelAdmin):
+    list_display = ['name', 'mapping_type', 'debit_account', 'credit_account', 'is_active']
+    list_filter = ['mapping_type', 'is_active']

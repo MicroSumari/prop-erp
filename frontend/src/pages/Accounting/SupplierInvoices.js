@@ -29,6 +29,21 @@ const SupplierInvoices = () => {
   };
   const [formData, setFormData] = useState(initialFormData);
 
+  const resolveAccountName = (id) => {
+    const account = accounts.find((a) => a.id === id);
+    return account ? `${account.account_number} - ${account.account_name}` : 'N/A';
+  };
+
+  const resolveCostCenter = (id) => {
+    const center = costCenters.find((c) => c.id === id);
+    return center ? `${center.code} - ${center.name}` : 'N/A';
+  };
+
+  const resolveSupplierName = (id) => {
+    const supplier = suppliers.find((s) => s.id === id);
+    return supplier ? `${supplier.first_name} ${supplier.last_name}` : 'N/A';
+  };
+
   const normalizeList = (data) => (Array.isArray(data) ? data : (data?.results || []));
 
   const fetchData = async () => {
@@ -119,7 +134,10 @@ const SupplierInvoices = () => {
   return (
     <Container fluid>
       <div className="page-header mb-4">
-        <h1>Supplier Invoices</h1>
+        <h1>
+          <i className="fas fa-file-invoice-dollar me-2"></i>
+          Supplier Invoices
+        </h1>
         <Button variant="primary" onClick={openCreate}>
           <i className="fas fa-plus me-2"></i>
           Add Supplier Invoice
@@ -144,35 +162,43 @@ const SupplierInvoices = () => {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((inv) => (
-                <tr key={inv.id}>
-                  <td>{inv.invoice_number}</td>
-                  <td>{inv.supplier}</td>
-                  <td>{inv.invoice_date}</td>
-                  <td>{inv.amount}</td>
-                  <td>{inv.total_amount}</td>
-                  <td>{inv.status}</td>
-                  <td>
-                    <Button
-                      variant="info"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => openView(inv)}
-                      title="View invoice"
-                    >
-                      <i className="fas fa-eye"></i>
-                    </Button>
-                    <Button
-                      variant="warning"
-                      size="sm"
-                      onClick={() => openEdit(inv)}
-                      title="Edit invoice"
-                    >
-                      <i className="fas fa-edit"></i>
-                    </Button>
+              {invoices.length > 0 ? (
+                invoices.map((inv) => (
+                  <tr key={inv.id}>
+                    <td>{inv.invoice_number}</td>
+                    <td>{inv.supplier}</td>
+                    <td>{inv.invoice_date}</td>
+                    <td>{inv.amount}</td>
+                    <td>{inv.total_amount}</td>
+                    <td>{inv.status}</td>
+                    <td>
+                      <Button
+                        variant="info"
+                        size="sm"
+                        className="me-2"
+                        onClick={() => openView(inv)}
+                        title="View invoice"
+                      >
+                        <i className="fas fa-eye"></i>
+                      </Button>
+                      <Button
+                        variant="warning"
+                        size="sm"
+                        onClick={() => openEdit(inv)}
+                        title="Edit invoice"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="text-center text-muted py-4">
+                    No supplier invoices yet. Click "Add Supplier Invoice" to create one.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </Table>
         </Card.Body>
@@ -324,11 +350,20 @@ const SupplierInvoices = () => {
           {viewItem && (
             <div className="d-grid gap-2">
               <div><strong>Invoice #:</strong> {viewItem.invoice_number}</div>
-              <div><strong>Supplier:</strong> {viewItem.supplier}</div>
+              <div><strong>Supplier:</strong> {resolveSupplierName(viewItem.supplier)}</div>
               <div><strong>Date:</strong> {viewItem.invoice_date}</div>
+              <div><strong>Due Date:</strong> {viewItem.due_date || 'N/A'}</div>
               <div><strong>Amount:</strong> {viewItem.amount}</div>
+              <div><strong>Taxable:</strong> {viewItem.is_taxable ? 'Yes' : 'No'}</div>
+              <div><strong>Tax Rate:</strong> {viewItem.tax_rate || 0}%</div>
+              <div><strong>Tax Amount:</strong> {viewItem.tax_amount || 0}</div>
               <div><strong>Total:</strong> {viewItem.total_amount}</div>
               <div><strong>Status:</strong> {viewItem.status}</div>
+              <div><strong>Expense Account:</strong> {resolveAccountName(viewItem.expense_account)}</div>
+              <div><strong>Supplier Account:</strong> {resolveAccountName(viewItem.supplier_account)}</div>
+              <div><strong>Tax Account:</strong> {resolveAccountName(viewItem.tax_account)}</div>
+              <div><strong>Cost Center:</strong> {resolveCostCenter(viewItem.cost_center)}</div>
+              {viewItem.notes && <div><strong>Notes:</strong> {viewItem.notes}</div>}
             </div>
           )}
         </Modal.Body>

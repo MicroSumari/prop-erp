@@ -37,7 +37,12 @@ const GeneralLedger = () => {
 
   return (
     <Container fluid>
-      <h2 className="mb-4">General Ledger</h2>
+      <div className="page-header mb-4">
+        <h1>
+          <i className="fas fa-book-open me-2"></i>
+          General Ledger
+        </h1>
+      </div>
       {error && <Alert variant="danger">{error}</Alert>}
 
       <Card className="mb-4">
@@ -80,17 +85,25 @@ const GeneralLedger = () => {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, idx) => (
-                <tr key={`${r.entry_id}-${idx}`}>
-                  <td>{r.entry_date}</td>
-                  <td>{r.entry_type}</td>
-                  <td>{r.reference_type} #{r.reference_id}</td>
-                  <td>{r.account_number} - {r.account_name}</td>
-                  <td>{r.debit}</td>
-                  <td>{r.credit}</td>
-                  <td>{r.cost_center}</td>
+              {rows.length > 0 ? (
+                rows.map((r, idx) => (
+                  <tr key={`${r.entry_id}-${idx}`}>
+                    <td>{r.entry_date}</td>
+                    <td>{r.entry_type}</td>
+                    <td>{r.reference_type} #{r.reference_id}</td>
+                    <td>{r.account_number} - {r.account_name}</td>
+                    <td>{r.debit}</td>
+                    <td>{r.credit}</td>
+                    <td>{r.cost_center}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="text-center text-muted py-4">
+                    No ledger entries. Choose filters and click Load.
+                  </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </Table>
         </Card.Body>
