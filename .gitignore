@@ -28,8 +28,8 @@ venv/
 ENV/
 env/
 .env/
-backend/.env
-frontend/.env
+.env
+.env.example
 
 # Django
 *.log
