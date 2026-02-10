@@ -27,6 +27,9 @@ __pycache__/
 venv/
 ENV/
 env/
+.env/
+backend/.env
+frontend/.env
 
 # Django
 *.log

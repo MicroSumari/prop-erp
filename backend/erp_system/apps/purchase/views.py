@@ -6,16 +6,28 @@ from .serializers import PurchaseOrderSerializer, SupplierInvoiceSerializer, Pay
 from .services import SupplierInvoiceService, PaymentVoucherService
 from erp_system.apps.accounts.models import ChequeRegister
 from erp_system.apps.accounts.services import ChequeRegisterService
-
+from rest_framework import viewsets, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.pagination import PageNumberPagination
 
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all()
     serializer_class = PurchaseOrderSerializer
 
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 class SupplierInvoiceViewSet(viewsets.ModelViewSet):
     queryset = SupplierInvoice.objects.all()
     serializer_class = SupplierInvoiceSerializer
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['supplier', 'status', 'invoice_date']
+    search_fields = ['invoice_number', 'supplier__first_name', 'supplier__last_name']
+    ordering_fields = ['invoice_date', 'due_date', 'amount', 'created_at']
+    ordering = ['-invoice_date']  # Default ordering
 
     def perform_create(self, serializer):
         invoice = serializer.save()
@@ -23,9 +35,47 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
             SupplierInvoiceService.post_supplier_invoice(invoice)
 
 
+from rest_framework import viewsets, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.pagination import PageNumberPagination
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class PaymentVoucherViewSet(viewsets.ModelViewSet):
     queryset = PaymentVoucher.objects.all()
     serializer_class = PaymentVoucherSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    
+    # Define filters
+    filterset_fields = {
+        'status': ['exact'],
+        'payment_method': ['exact'],
+        'payment_date': ['gte', 'lte', 'exact'],
+        'supplier__first_name': ['icontains'],
+        'supplier__last_name': ['icontains'],
+    }
+    
+    # Define search fields
+    search_fields = [
+        'voucher_number',
+        'supplier__first_name',
+        'supplier__last_name',
+        'description',
+    ]
+    
+    # Define ordering fields
+    ordering_fields = [
+        'voucher_number',
+        'payment_date',
+        'amount',
+        'supplier__first_name',
+        'created_at',
+    ]
+    ordering = ['-payment_date']
 
     def perform_create(self, serializer):
         voucher = serializer.save()

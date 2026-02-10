@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     
     # Third-party apps
     'rest_framework',
+    'django_filters',
     'rest_framework.authtoken',
     'corsheaders',
     
@@ -133,7 +134,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    'PAGE_SIZE': 10,
     'DEFAULT_FILTER_BACKENDS': [
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',

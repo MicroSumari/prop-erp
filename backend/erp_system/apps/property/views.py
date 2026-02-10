@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
+from rest_framework.pagination import PageNumberPagination
 from .models import (
     Property, Unit, Tenant, Lease, Maintenance, Expense, Rent,
     LeaseRenewal, LeaseTermination, RentalLegalCase, RentalLegalCaseStatusHistory
@@ -16,9 +17,16 @@ from .serializers import (
 from .services import LeaseService, RentalLegalCaseService
 
 
+# custome pagination in drf
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size_query_param = 'page_size'
+    max_page_size = 100 
+
+
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
+    pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'property_type', 'owner']
     search_fields = ['name', 'property_id', 'city']
@@ -29,24 +37,34 @@ class PropertyViewSet(viewsets.ModelViewSet):
 class UnitViewSet(viewsets.ModelViewSet):
     queryset = Unit.objects.all()
     serializer_class = UnitSerializer
+    pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['property', 'status']
+    filterset_fields = ['property', 'status', 'unit_type']
     search_fields = ['unit_number']
 
 
 class TenantViewSet(viewsets.ModelViewSet):
     queryset = Tenant.objects.all()
     serializer_class = TenantSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['first_name', 'last_name', 'email']
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend, filters.OrderingFilter]
+    
+    # Add these lines for filtering
+    filterset_fields = ['ledger_account_type', 'has_ledger_account','unit','cost_center']
+    search_fields = ['first_name', 'last_name', 'email', 'phone']
+    ordering_fields = ['created_at', 'first_name', 'last_name', 'move_in_date']
+    ordering = ['-created_at']
 
 
 class LeaseViewSet(viewsets.ModelViewSet):
     queryset = Lease.objects.all()
     serializer_class = LeaseSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'unit', 'tenant']
     search_fields = ['lease_number']
+    ordering_fields = ['created_at', 'start_date', 'end_date', 'monthly_rent']
+    ordering = ['-created_at']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -221,6 +239,7 @@ class LeaseTerminationViewSet(viewsets.ModelViewSet):
     """
     queryset = LeaseTermination.objects.all()
     serializer_class = LeaseTerminationSerializer
+    pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['lease', 'termination_type', 'status']
     search_fields = ['termination_number', 'lease__lease_number']
@@ -367,6 +386,11 @@ class LeaseTerminationViewSet(viewsets.ModelViewSet):
             )
 
 
+class LegalCasePagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class RentalLegalCaseViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Rental Legal Cases
@@ -376,6 +400,7 @@ class RentalLegalCaseViewSet(viewsets.ModelViewSet):
     """
     queryset = RentalLegalCase.objects.all()
     serializer_class = RentalLegalCaseSerializer
+    pagination_class = LegalCasePagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['tenant', 'lease', 'property', 'unit', 'case_type', 'current_status']
     search_fields = ['case_number', 'court_name']

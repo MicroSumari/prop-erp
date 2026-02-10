@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Badge, Form, Container, Alert, Row, Col, Spinner } from 'react-bootstrap';
+import { 
+  Card, Table, Button, Badge, Form, Container, Alert, 
+  Row, Col, Spinner, InputGroup, Pagination, Dropdown 
+} from 'react-bootstrap';
 import '../Receipt/ReceiptVoucher.css';
 import apiClient from '../../services/api';
 
@@ -22,12 +25,25 @@ const ReceiptVoucher = () => {
   const [tenants, setTenants] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalCount: 0
+  });
+  
+  // Search state
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchTenants();
@@ -43,12 +59,55 @@ const ReceiptVoucher = () => {
     }
   };
 
-  const fetchReceipts = async () => {
+  const fetchReceipts = async (page = 1) => {
     try {
-      const response = await apiClient.get('/sales/receipt-vouchers/');
-      setReceipts(response.data.results || response.data);
+      setReceiptsLoading(true);
+      
+      const params = {
+        page: page,
+        page_size: pagination.pageSize,
+      };
+      
+      // Add backend filters
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+      if (filterStatus) {
+        params.status = filterStatus;
+      }
+      if (filterPaymentMethod) {
+        params.payment_method = filterPaymentMethod;
+      }
+      
+      const response = await apiClient.get('/sales/receipt-vouchers/', { params });
+      
+      // Handle Django REST Framework pagination format
+      if (response.data.results !== undefined) {
+        setReceipts(response.data.results);
+        setPagination(prev => ({
+          ...prev,
+          page: page,
+          totalCount: response.data.count,
+          totalPages: Math.ceil(response.data.count / prev.pageSize)
+        }));
+      } else {
+        // Non-paginated response
+        const data = response.data;
+        setReceipts(Array.isArray(data) ? data : []);
+        setPagination(prev => ({
+          ...prev,
+          page: 1,
+          totalCount: Array.isArray(data) ? data.length : 0,
+          totalPages: 1
+        }));
+      }
+      
+      setError(null);
     } catch (err) {
       console.error('Error fetching receipts:', err);
+      setError(`Error loading receipts: ${err.message}`);
+    } finally {
+      setReceiptsLoading(false);
     }
   };
 
@@ -74,7 +133,7 @@ const ReceiptVoucher = () => {
     setEditMode(true);
     setEditId(receipt.id);
     setFormData({
-      tenant: receipt.tenant,
+      tenant: receipt.tenant || receipt.tenant_details?.id,
       payment_date: receipt.payment_date,
       amount: receipt.amount,
       payment_method: receipt.payment_method,
@@ -167,7 +226,7 @@ const ReceiptVoucher = () => {
       setEditMode(false);
       setEditId(null);
       setShowForm(false);
-      fetchReceipts();
+      fetchReceipts(pagination.page);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -179,7 +238,7 @@ const ReceiptVoucher = () => {
     try {
       await apiClient.post(`/sales/receipt-vouchers/${id}/mark_cleared/`);
       setSuccess('Receipt marked as cleared');
-      fetchReceipts();
+      fetchReceipts(pagination.page);
     } catch (err) {
       setError(err.message);
     }
@@ -189,16 +248,75 @@ const ReceiptVoucher = () => {
     try {
       await apiClient.post(`/sales/receipt-vouchers/${id}/mark_bounced/`);
       setSuccess('Receipt marked as bounced');
-      fetchReceipts();
+      fetchReceipts(pagination.page);
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const filteredReceipts = receipts.filter((receipt) => {
-    if (filterStatus === 'all') return true;
-    return receipt.status === filterStatus;
-  });
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchReceipts(1);
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setFilterStatus(value);
+  };
+
+  const handlePaymentMethodFilterChange = (value) => {
+    setFilterPaymentMethod(value);
+  };
+
+  const handlePageChange = (pageNumber) => {
+    setPagination(prev => ({ ...prev, page: pageNumber }));
+    fetchReceipts(pageNumber);
+  };
+
+  const handlePageSizeChange = (size) => {
+    setPagination(prev => ({ 
+      ...prev, 
+      pageSize: size,
+      page: 1
+    }));
+    fetchReceipts(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilterStatus('');
+    setFilterPaymentMethod('');
+    setSearchTerm('');
+    fetchReceipts(1);
+  };
+
+  // Trigger fetch when filters change
+  useEffect(() => {
+    fetchReceipts(pagination.page);
+  }, [filterStatus, filterPaymentMethod, searchTerm]);
+
+  const renderPaginationItems = () => {
+    const items = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(pagination.totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let number = startPage; number <= endPage; number++) {
+      items.push(
+        <Pagination.Item
+          key={number}
+          active={number === pagination.page}
+          onClick={() => handlePageChange(number)}
+        >
+          {number}
+        </Pagination.Item>
+      );
+    }
+    
+    return items;
+  };
 
   const getStatusBadgeClass = (status) => {
     const statusMap = {
@@ -219,6 +337,17 @@ const ReceiptVoucher = () => {
       post_dated_cheque: 'Post-Dated Cheque',
     };
     return methodMap[method] || method;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return 'SAR 0.00';
+    return `SAR ${parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
   };
 
   return (
@@ -245,6 +374,117 @@ const ReceiptVoucher = () => {
         </Button>
       </div>
 
+      {/* Filters and Search Bar */}
+      <Card className="mb-4">
+        <Card.Body>
+          <Row className="g-3">
+            <Col md={4}>
+              <Form onSubmit={handleSearch}>
+                <InputGroup>
+                  <Form.Control
+                    placeholder="Search by receipt number, tenant name, or cheque number"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <Button variant="outline-secondary" type="submit">
+                    <i className="fas fa-search"></i>
+                  </Button>
+                </InputGroup>
+              </Form>
+            </Col>
+            
+            <Col md={2}>
+              <Form.Select
+                value={filterStatus} 
+                onChange={(e) => handleStatusFilterChange(e.target.value)}
+              >
+                <option value="">All Status</option>
+                <option value="draft">Draft</option>
+                <option value="submitted">Submitted</option>
+                <option value="cleared">Cleared</option>
+                <option value="bounced">Bounced</option>
+                <option value="cancelled">Cancelled</option>
+              </Form.Select>
+            </Col>
+            
+            <Col md={2}>
+              <Form.Select
+                value={filterPaymentMethod} 
+                onChange={(e) => handlePaymentMethodFilterChange(e.target.value)}
+              >
+                <option value="">All Methods</option>
+                <option value="cash">Cash</option>
+                <option value="bank">Bank Transfer</option>
+                <option value="cheque">Cheque</option>
+                <option value="post_dated_cheque">Post-Dated Cheque</option>
+              </Form.Select>
+            </Col>
+            
+            <Col md={4} className="d-flex gap-2">
+              <Button 
+                variant="outline-secondary" 
+                onClick={handleClearFilters}
+                title="Clear all filters"
+                disabled={!searchTerm && !filterStatus && !filterPaymentMethod}
+              >
+                <i className="fas fa-times me-1"></i>
+                Clear Filters
+              </Button>
+              
+              <Dropdown>
+                <Dropdown.Toggle variant="outline-secondary">
+                  {pagination.pageSize} per page
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(10)}>10</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(25)}>25</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(50)}>50</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(100)}>100</Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+            </Col>
+          </Row>
+          
+          {/* Active filters display */}
+          {(searchTerm || filterStatus || filterPaymentMethod) && (
+            <div className="mt-3">
+              <small className="text-muted me-2">Active filters:</small>
+              {filterStatus && (
+                <Badge bg="info" className="me-2" style={{ cursor: 'pointer' }}>
+                  Status: {filterStatus}
+                  <i className="fas fa-times ms-1" onClick={() => handleStatusFilterChange('')}></i>
+                </Badge>
+              )}
+              {filterPaymentMethod && (
+                <Badge bg="info" className="me-2" style={{ cursor: 'pointer' }}>
+                  Method: {getPaymentMethodLabel(filterPaymentMethod)}
+                  <i className="fas fa-times ms-1" onClick={() => handlePaymentMethodFilterChange('')}></i>
+                </Badge>
+              )}
+              {searchTerm && (
+                <Badge bg="info" className="me-2" style={{ cursor: 'pointer' }}>
+                  Search: "{searchTerm}"
+                  <i className="fas fa-times ms-1" onClick={() => {
+                    setSearchTerm('');
+                    fetchReceipts(1);
+                  }}></i>
+                </Badge>
+              )}
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
+      {/* Results Info */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <span className="text-muted">
+            Showing {receipts.length} of {pagination.totalCount} receipts
+          </span>
+        </div>
+        {receiptsLoading && <Spinner animation="border" size="sm" />}
+      </div>
+
       {showForm && (
         <Card className="mb-4">
           <Card.Header className="bg-success text-white">
@@ -252,6 +492,7 @@ const ReceiptVoucher = () => {
           </Card.Header>
           <Card.Body>
             <Form onSubmit={handleSubmit}>
+              {/* Form remains exactly the same - no changes */}
               <Form.Group className="mb-3">
                 <Form.Label>Tenant <span className="text-danger">*</span></Form.Label>
                 <Form.Select
@@ -428,110 +669,145 @@ const ReceiptVoucher = () => {
         </Card>
       )}
 
-      <div className="mb-3">
-        <Form.Label>Filter by Status:</Form.Label>
-        <Form.Select
-          value={filterStatus} 
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{width: '200px'}}
-        >
-          <option value="all">All</option>
-          <option value="draft">Draft</option>
-          <option value="submitted">Submitted</option>
-          <option value="cleared">Cleared</option>
-          <option value="bounced">Bounced</option>
-          <option value="cancelled">Cancelled</option>
-        </Form.Select>
-      </div>
-
       <div>
         <Card>
           <Card.Body>
-            <Table responsive hover>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Receipt #</th>
-                  <th>Tenant</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                  <th>Method</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredReceipts.length > 0 ? (
-                  filteredReceipts.map((receipt) => (
-                    <tr key={receipt.id}>
-                      <td>{receipt.id}</td>
-                      <td>
-                        <strong>{receipt.receipt_number}</strong>
-                      </td>
-                      <td>
-                        {receipt.tenant_details?.first_name} {receipt.tenant_details?.last_name}
-                      </td>
-                      <td>SAR {parseFloat(receipt.amount).toFixed(2)}</td>
-                      <td>{receipt.payment_date}</td>
-                      <td>{getPaymentMethodLabel(receipt.payment_method)}</td>
-                      <td>
-                        <Badge bg={getStatusBadgeClass(receipt.status)}>
-                          {receipt.status.toUpperCase()}
-                        </Badge>
-                      </td>
-                      <td className="actions-cell">
-                        <Button 
-                          size="sm"
-                          variant="info"
-                          onClick={() => navigate(`/receipt-vouchers/${receipt.id}`)}
-                          className="me-2"
-                          title="View receipt details"
-                        >
-                          <i className="fas fa-eye"></i>
-                        </Button>
-                        <Button 
-                          size="sm"
-                          variant="warning"
-                          onClick={() => handleEdit(receipt)}
-                          className="me-2"
-                          title="Edit receipt"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </Button>
-                        {receipt.payment_method !== 'cash' && receipt.status === 'submitted' && (
-                          <Button 
-                            size="sm"
-                            variant="success"
-                            onClick={() => markAsCleared(receipt.id)}
-                            className="me-2"
-                            title="Mark as cleared"
-                          >
-                            <i className="fas fa-check"></i>
-                          </Button>
-                        )}
-                        {(receipt.payment_method === 'cheque' || 
-                          receipt.payment_method === 'post_dated_cheque') && 
-                          receipt.status === 'submitted' && (
-                          <Button 
-                            size="sm"
-                            variant="danger"
-                            onClick={() => markAsBounced(receipt.id)}
-                          >
-                            Mark Bounced
-                          </Button>
-                        )}
-                      </td>
+            {receiptsLoading && receipts.length === 0 ? (
+              <div className="text-center py-5">
+                <Spinner animation="border" />
+                <p className="mt-2">Loading receipts...</p>
+              </div>
+            ) : (
+              <>
+                <Table responsive hover>
+                  <thead className="table-header">
+                    <tr>
+                      <th>ID</th>
+                      <th>Receipt #</th>
+                      <th>Tenant</th>
+                      <th>Amount</th>
+                      <th>Date</th>
+                      <th>Method</th>
+                      <th>Status</th>
+                      <th>Created</th>
+                      <th>Actions</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="text-center text-muted">
-                      No receipt vouchers found
-                    </td>
-                  </tr>
+                  </thead>
+                  <tbody>
+                    {receipts.length > 0 ? (
+                      receipts.map((receipt) => (
+                        <tr key={receipt.id}>
+                          <td>{receipt.id}</td>
+                          <td>
+                            <strong>{receipt.receipt_number}</strong>
+                          </td>
+                          <td>
+                            {receipt.tenant_details?.first_name} {receipt.tenant_details?.last_name}
+                          </td>
+                          <td>{formatCurrency(receipt.amount)}</td>
+                          <td>{formatDate(receipt.payment_date)}</td>
+                          <td>{getPaymentMethodLabel(receipt.payment_method)}</td>
+                          <td>
+                            <Badge bg={getStatusBadgeClass(receipt.status)}>
+                              {receipt.status.toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td>
+                            <small className="text-muted">
+                              {formatDate(receipt.created_at)}
+                            </small>
+                          </td>
+                          <td className="actions-cell">
+                            <Button 
+                              size="sm"
+                              variant="info"
+                              onClick={() => navigate(`/receipt-vouchers/${receipt.id}`)}
+                              className="me-2"
+                              title="View receipt details"
+                            >
+                              <i className="fas fa-eye"></i>
+                            </Button>
+                            <Button 
+                              size="sm"
+                              variant="warning"
+                              onClick={() => handleEdit(receipt)}
+                              className="me-2"
+                              title="Edit receipt"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </Button>
+                            {receipt.payment_method !== 'cash' && receipt.status === 'submitted' && (
+                              <Button 
+                                size="sm"
+                                variant="success"
+                                onClick={() => markAsCleared(receipt.id)}
+                                className="me-2"
+                                title="Mark as cleared"
+                              >
+                                <i className="fas fa-check"></i>
+                              </Button>
+                            )}
+                            {(receipt.payment_method === 'cheque' || 
+                              receipt.payment_method === 'post_dated_cheque') && 
+                              receipt.status === 'submitted' && (
+                              <Button 
+                                size="sm"
+                                variant="danger"
+                                onClick={() => markAsBounced(receipt.id)}
+                                title="Mark as bounced"
+                              >
+                                <i className="fas fa-ban"></i>
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="9" className="text-center text-muted py-4">
+                          No receipt vouchers found. Try changing your filters or create a new receipt.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+
+                {/* Pagination */}
+                {pagination.totalPages > 1 && pagination.totalCount > pagination.pageSize && (
+                  <div className="d-flex justify-content-between align-items-center mt-4">
+                    <div className="text-muted">
+                      Page {pagination.page} of {pagination.totalPages}
+                    </div>
+                    
+                    <Pagination>
+                      <Pagination.First 
+                        onClick={() => handlePageChange(1)} 
+                        disabled={pagination.page === 1}
+                      />
+                      <Pagination.Prev 
+                        onClick={() => handlePageChange(pagination.page - 1)} 
+                        disabled={pagination.page === 1}
+                      />
+                      
+                      {renderPaginationItems()}
+                      
+                      <Pagination.Next 
+                        onClick={() => handlePageChange(pagination.page + 1)} 
+                        disabled={pagination.page === pagination.totalPages}
+                      />
+                      <Pagination.Last 
+                        onClick={() => handlePageChange(pagination.totalPages)} 
+                        disabled={pagination.page === pagination.totalPages}
+                      />
+                    </Pagination>
+                    
+                    <div className="text-muted">
+                      {pagination.totalCount} total receipts
+                    </div>
+                  </div>
                 )}
-              </tbody>
-            </Table>
+              </>
+            )}
           </Card.Body>
         </Card>
       </div>

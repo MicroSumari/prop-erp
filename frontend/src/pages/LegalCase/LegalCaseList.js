@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Card, Badge, Spinner, Alert, Modal, Form } from 'react-bootstrap';
+import { 
+  Container, Table, Button, Card, Badge, Spinner, Alert, Modal, Form,
+  Row, Col, InputGroup, FormControl, Pagination
+} from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../services/api';
 
@@ -9,6 +12,19 @@ function LegalCaseList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    case_type: '',
+    current_status: '',
+  });
+  
   // Status change modal
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
@@ -16,24 +32,74 @@ function LegalCaseList() {
   const [changeReason, setChangeReason] = useState('');
   const [statusLoading, setStatusLoading] = useState(false);
   
-
-  
-  useEffect(() => {
-    fetchLegalCases();
-  }, []);
-  
+  // Fetch data with pagination and filters
   const fetchLegalCases = async () => {
+    setLoading(true);
     try {
-      const response = await apiClient.get('/property/legal-cases/');
-      // Handle both paginated (with results) and non-paginated responses
-      const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
-      setLegalCases(data);
+      const params = {
+        page: currentPage,
+        page_size: itemsPerPage,
+      };
+      
+      if (searchQuery) params.search = searchQuery;
+      if (filters.case_type) params.case_type = filters.case_type;
+      if (filters.current_status) params.current_status = filters.current_status;
+      
+      const response = await apiClient.get('/property/legal-cases/', { params });
+      
+      // Handle paginated response
+      if (response.data.results) {
+        setLegalCases(response.data.results);
+        setTotalItems(response.data.count || 0);
+        setTotalPages(Math.ceil((response.data.count || 0) / itemsPerPage));
+      } else {
+        setLegalCases(Array.isArray(response.data) ? response.data : []);
+        setTotalItems(Array.isArray(response.data) ? response.data.length : 0);
+        setTotalPages(1);
+      }
+      
+      setError('');
     } catch (err) {
       setError('Error fetching legal cases');
       console.error('Error:', err);
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Fetch on initial load and when filters/pagination changes
+  useEffect(() => {
+    fetchLegalCases();
+  }, [currentPage, filters.case_type, filters.current_status]);
+  
+  // Debounced search
+  useEffect(() => {
+    if (searchQuery !== undefined) {
+      setCurrentPage(1);
+      const delayDebounceFn = setTimeout(() => {
+        fetchLegalCases();
+      }, 500);
+
+      return () => clearTimeout(delayDebounceFn);
+    }
+  }, [searchQuery]);
+  
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+  
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+    setCurrentPage(1);
+  };
+  
+  const clearFilters = () => {
+    setFilters({
+      case_type: '',
+      current_status: '',
+    });
+    setSearchQuery('');
+    setCurrentPage(1);
   };
   
   const getCaseTypeBadge = (caseType) => {
@@ -106,6 +172,57 @@ function LegalCaseList() {
     }
   };
   
+  // Generate pagination items
+  const renderPaginationItems = () => {
+    const items = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    if (startPage > 1) {
+      items.push(
+        <Pagination.Item key={1} onClick={() => setCurrentPage(1)}>
+          1
+        </Pagination.Item>
+      );
+      if (startPage > 2) {
+        items.push(<Pagination.Ellipsis key="ellipsis-start" />);
+      }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      items.push(
+        <Pagination.Item
+          key={i}
+          active={i === currentPage}
+          onClick={() => setCurrentPage(i)}
+        >
+          {i}
+        </Pagination.Item>
+      );
+    }
+    
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        items.push(<Pagination.Ellipsis key="ellipsis-end" />);
+      }
+      items.push(
+        <Pagination.Item
+          key={totalPages}
+          onClick={() => setCurrentPage(totalPages)}
+        >
+          {totalPages}
+        </Pagination.Item>
+      );
+    }
+    
+    return items;
+  };
 
   return (
     <Container fluid className="mt-4">
@@ -119,69 +236,176 @@ function LegalCaseList() {
       
       {error && <Alert variant="danger">{error}</Alert>}
       
+      {/* Search and Filter Card - All in one line */}
+      <Card className="mb-4">
+        <Card.Body>
+          <Row className="align-items-center">
+            {/* Search Input */}
+            <Col md={5}>
+              <InputGroup>
+                <InputGroup.Text>
+                  <i className="fas fa-search"></i>
+                </InputGroup.Text>
+                <FormControl
+                  placeholder="Search by case number or court name..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                />
+              </InputGroup>
+            </Col>
+            
+            {/* Case Type Filter */}
+            <Col md={2}>
+              <Form.Select 
+                value={filters.case_type} 
+                onChange={(e) => handleFilterChange('case_type', e.target.value)}
+                size="sm"
+              >
+                <option value="">All Case Types</option>
+                <option value="eviction">Eviction</option>
+                <option value="non_payment">Non-Payment</option>
+                <option value="damage">Property Damage</option>
+                <option value="other">Other</option>
+              </Form.Select>
+            </Col>
+            
+            {/* Status Filter */}
+            <Col md={2}>
+              <Form.Select 
+                value={filters.current_status} 
+                onChange={(e) => handleFilterChange('current_status', e.target.value)}
+                size="sm"
+              >
+                <option value="">All Statuses</option>
+                <option value="filed">Filed</option>
+                <option value="in_progress">In Progress</option>
+                <option value="judgment_passed">Judgment Passed</option>
+                <option value="closed_tenant_won">Closed (Tenant Won)</option>
+                <option value="closed_owner_won">Closed (Owner Won)</option>
+              </Form.Select>
+            </Col>
+            
+            {/* Clear Filters Button */}
+            <Col md={1}>
+              <Button 
+                variant="outline-secondary" 
+                onClick={clearFilters}
+                size="sm"
+                title="Clear all filters"
+              >
+                <i className="fas fa-times"></i>
+              </Button>
+            </Col>
+            
+            {/* Stats Display */}
+            <Col md={2} className="text-end">
+              <div className="text-muted small">
+                <div>Page {currentPage} of {totalPages}</div>
+                <div>{legalCases.length} of {totalItems} shown</div>
+              </div>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+
       {loading ? (
         <div className="text-center">
           <Spinner animation="border" />
         </div>
       ) : (
         <Card>
+          <Card.Header className="d-flex justify-content-between align-items-center">
+            <div>
+              Legal Cases
+              {loading && <Spinner animation="border" size="sm" className="ms-2" />}
+            </div>
+          </Card.Header>
           <Card.Body>
-            <Table responsive hover>
-              <thead>
-                <tr>
-                  <th>Case Number</th>
-                  <th>Tenant</th>
-                  <th>Property</th>
-                  <th>Unit</th>
-                  <th>Case Type</th>
-                  <th>Filing Date</th>
-                  <th>Status</th>
-                  <th>Court</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {legalCases.length > 0 ? (
-                  legalCases.map(legalCase => (
-                    <tr key={legalCase.id}>
-                      <td>{legalCase.case_number}</td>
-                      <td>{legalCase.tenant_name}</td>
-                      <td>{legalCase.property_name}</td>
-                      <td>{legalCase.unit_number}</td>
-                      <td>{getCaseTypeBadge(legalCase.case_type)}</td>
-                      <td>{new Date(legalCase.filing_date).toLocaleDateString()}</td>
-                      <td>{getStatusBadge(legalCase.current_status)}</td>
-                      <td>{legalCase.court_name}</td>
-                      <td>
-                        <Button
-                          size="sm"
-                          variant="info"
-                          className="me-2"
-                          onClick={() => navigate(`/legal-cases/${legalCase.id}`)}
-                          title="View details and history"
-                        >
-                          <i className="fas fa-eye"></i>
-                        </Button>
-                        {getNextStatuses(legalCase.current_status).length > 0 && (
+            <div className="table-responsive">
+              <Table hover>
+                <thead>
+                  <tr>
+                    <th>Case Number</th>
+                    <th>Tenant</th>
+                    <th>Property</th>
+                    <th>Unit</th>
+                    <th>Case Type</th>
+                    <th>Filing Date</th>
+                    <th>Status</th>
+                    <th>Court</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {legalCases.length > 0 ? (
+                    legalCases.map(legalCase => (
+                      <tr key={legalCase.id}>
+                        <td><strong>{legalCase.case_number}</strong></td>
+                        <td>{legalCase.tenant_name || legalCase.tenant}</td>
+                        <td>{legalCase.property_name || legalCase.property}</td>
+                        <td>{legalCase.unit_number || legalCase.unit}</td>
+                        <td>{getCaseTypeBadge(legalCase.case_type)}</td>
+                        <td>{new Date(legalCase.filing_date).toLocaleDateString()}</td>
+                        <td>{getStatusBadge(legalCase.current_status)}</td>
+                        <td>{legalCase.court_name}</td>
+                        <td>
                           <Button
                             size="sm"
-                            variant="warning"
-                            onClick={() => handleStatusChange(legalCase)}
-                            title="Change status"
+                            variant="info"
+                            className="me-2"
+                            onClick={() => navigate(`/legal-cases/${legalCase.id}`)}
+                            title="View details and history"
                           >
-                            <i className="fas fa-exchange-alt"></i>
+                            <i className="fas fa-eye"></i>
                           </Button>
-                        )}
+                          {getNextStatuses(legalCase.current_status).length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="warning"
+                              onClick={() => handleStatusChange(legalCase)}
+                              title="Change status"
+                            >
+                              <i className="fas fa-exchange-alt"></i>
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="9" className="text-center text-muted py-4">
+                        {loading ? 'Loading...' : 'No legal cases found'}
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="9" className="text-center">No legal cases found</td>
-                  </tr>
-                )}
-              </tbody>
-            </Table>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="d-flex justify-content-center mt-3">
+                <Pagination>
+                  <Pagination.First 
+                    onClick={() => setCurrentPage(1)} 
+                    disabled={currentPage === 1}
+                  />
+                  <Pagination.Prev 
+                    onClick={() => setCurrentPage(currentPage - 1)} 
+                    disabled={currentPage === 1}
+                  />
+                  {renderPaginationItems()}
+                  <Pagination.Next 
+                    onClick={() => setCurrentPage(currentPage + 1)} 
+                    disabled={currentPage === totalPages}
+                  />
+                  <Pagination.Last 
+                    onClick={() => setCurrentPage(totalPages)} 
+                    disabled={currentPage === totalPages}
+                  />
+                </Pagination>
+              </div>
+            )}
           </Card.Body>
         </Card>
       )}

@@ -7,12 +7,18 @@ from .serializers import SalesOrderSerializer, ReceiptVoucherSerializer, Custome
 from .services import ReceiptVoucherService, CustomerInvoiceService
 from erp_system.apps.accounts.models import ChequeRegister
 from erp_system.apps.accounts.services import ChequeRegisterService
+from rest_framework.pagination import PageNumberPagination
 from erp_system.apps.property.models import Tenant
 
 
 class SalesOrderViewSet(viewsets.ModelViewSet):
     queryset = SalesOrder.objects.all()
     serializer_class = SalesOrderSerializer
+
+
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class ReceiptVoucherViewSet(viewsets.ModelViewSet):
@@ -25,6 +31,7 @@ class ReceiptVoucherViewSet(viewsets.ModelViewSet):
     """
     queryset = ReceiptVoucher.objects.all()
     serializer_class = ReceiptVoucherSerializer
+    pagination_class = CustomPageNumberPagination 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['tenant', 'payment_method', 'status', 'payment_date']
     search_fields = ['receipt_number', 'tenant__first_name', 'tenant__last_name', 'cheque_number']
@@ -106,6 +113,12 @@ class CustomerInvoiceViewSet(viewsets.ModelViewSet):
     """Customer invoice viewset with accounting posting"""
     queryset = CustomerInvoice.objects.all()
     serializer_class = CustomerInvoiceSerializer
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['tenant', 'status', 'invoice_date']
+    search_fields = ['invoice_number', 'tenant__first_name', 'tenant__last_name']
+    ordering_fields = ['invoice_date', 'due_date', 'amount', 'created_at']
+    ordering = ['-invoice_date']
 
     def perform_create(self, serializer):
         invoice = serializer.save()

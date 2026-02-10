@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Badge, Form, Container, Alert, Row, Col, Spinner } from 'react-bootstrap';
+import { 
+  Card, Table, Button, Badge, Form, Container, Alert, 
+  Row, Col, Spinner, InputGroup, Pagination, Dropdown 
+} from 'react-bootstrap';
 import '../Lease/LeaseTermination.css';
 import apiClient from '../../services/api';
 
@@ -27,12 +30,25 @@ const LeaseTermination = () => {
   const [terminations, setTerminations] = useState([]);
   const [selectedLease, setSelectedLease] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [terminationsLoading, setTerminationsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterType, setFilterType] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalCount: 0
+  });
+  
+  // Search state
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchLeases();
@@ -43,7 +59,6 @@ const LeaseTermination = () => {
     try {
       const response = await apiClient.get('/property/leases/');
       const leasesData = response.data.results || response.data;
-      console.log('Fetched leases:', leasesData);
       const activeLeases = leasesData.filter(
         (lease) => lease.status === 'active' || lease.status === 'Active'
       );
@@ -57,13 +72,55 @@ const LeaseTermination = () => {
     }
   };
 
-  const fetchTerminations = async () => {
+  const fetchTerminations = async (page = 1) => {
     try {
-      const response = await apiClient.get('/property/lease-terminations/');
-      setTerminations(response.data.results || response.data);
+      setTerminationsLoading(true);
+      
+      const params = {
+        page: page,
+        page_size: pagination.pageSize,
+      };
+      
+      // Add backend filters
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+      if (filterStatus) {
+        params.status = filterStatus;
+      }
+      if (filterType) {
+        params.termination_type = filterType;
+      }
+      
+      const response = await apiClient.get('/property/lease-terminations/', { params });
+      
+      // Handle Django REST Framework pagination format
+      if (response.data.results !== undefined) {
+        setTerminations(response.data.results);
+        setPagination(prev => ({
+          ...prev,
+          page: page,
+          totalCount: response.data.count,
+          totalPages: Math.ceil(response.data.count / prev.pageSize)
+        }));
+      } else {
+        // Non-paginated response
+        const data = response.data;
+        setTerminations(Array.isArray(data) ? data : []);
+        setPagination(prev => ({
+          ...prev,
+          page: 1,
+          totalCount: Array.isArray(data) ? data.length : 0,
+          totalPages: 1
+        }));
+      }
+      
+      setError(null);
     } catch (err) {
       console.error('Error fetching terminations:', err);
       setError(`Error loading terminations: ${err.message}`);
+    } finally {
+      setTerminationsLoading(false);
     }
   };
 
@@ -86,17 +143,24 @@ const LeaseTermination = () => {
     });
   };
 
+  // FIXED: HandleEdit function that works with both data structures
   const handleEdit = async (termination) => {
     setEditMode(true);
     setEditId(termination.id);
     
-    // Fetch the lease details
     try {
-      const leaseResponse = await apiClient.get(`/property/leases/${termination.lease}/`);
+      // Get the lease ID - handle both nested and direct references
+      const leaseId = termination.lease || (termination.lease && typeof termination.lease === 'object' ? termination.lease.id : null);
+      
+      if (!leaseId) {
+        throw new Error('Lease information not found in termination data');
+      }
+      
+      const leaseResponse = await apiClient.get(`/property/leases/${leaseId}/`);
       setSelectedLease(leaseResponse.data);
       
       setFormData({
-        lease: termination.lease,
+        lease: leaseId,
         termination_type: termination.termination_type,
         termination_date: termination.termination_date,
         original_security_deposit: termination.original_security_deposit || '',
@@ -115,7 +179,7 @@ const LeaseTermination = () => {
       setShowForm(true);
     } catch (err) {
       console.error('Error fetching lease details:', err);
-      setError('Failed to load termination details');
+      setError('Failed to load termination details: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -191,7 +255,7 @@ const LeaseTermination = () => {
       setEditMode(false);
       setEditId(null);
       setShowForm(false);
-      fetchTerminations();
+      fetchTerminations(pagination.page);
     } catch (err) {
       const errorData = err.response?.data;
       if (errorData && typeof errorData === 'object') {
@@ -214,7 +278,7 @@ const LeaseTermination = () => {
     try {
       await apiClient.post(`/property/lease-terminations/${id}/approve/`);
       setSuccess('Termination approved');
-      fetchTerminations();
+      fetchTerminations(pagination.page);
     } catch (err) {
       setError(err.message);
     }
@@ -224,17 +288,76 @@ const LeaseTermination = () => {
     try {
       await apiClient.post(`/property/lease-terminations/${id}/complete/`);
       setSuccess('Termination completed');
-      fetchTerminations();
+      fetchTerminations(pagination.page);
       fetchLeases();
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const filteredTerminations = terminations.filter((term) => {
-    if (filterStatus === 'all') return true;
-    return term.status === filterStatus;
-  });
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchTerminations(1);
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setFilterStatus(value);
+  };
+
+  const handleTypeFilterChange = (value) => {
+    setFilterType(value);
+  };
+
+  const handlePageChange = (pageNumber) => {
+    setPagination(prev => ({ ...prev, page: pageNumber }));
+    fetchTerminations(pageNumber);
+  };
+
+  const handlePageSizeChange = (size) => {
+    setPagination(prev => ({ 
+      ...prev, 
+      pageSize: size,
+      page: 1
+    }));
+    fetchTerminations(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilterStatus('');
+    setFilterType('');
+    setSearchTerm('');
+    fetchTerminations(1);
+  };
+
+  // Trigger fetch when filters change
+  useEffect(() => {
+    fetchTerminations(pagination.page);
+  }, [filterStatus, filterType, searchTerm]);
+
+  const renderPaginationItems = () => {
+    const items = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(pagination.totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let number = startPage; number <= endPage; number++) {
+      items.push(
+        <Pagination.Item
+          key={number}
+          active={number === pagination.page}
+          onClick={() => handlePageChange(number)}
+        >
+          {number}
+        </Pagination.Item>
+      );
+    }
+    
+    return items;
+  };
 
   const getStatusBadgeClass = (status) => {
     const statusMap = {
@@ -250,6 +373,17 @@ const LeaseTermination = () => {
 
   const getTypeLabel = (type) => {
     return type === 'normal' ? 'Normal Termination' : 'Early Termination';
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return 'SAR 0.00';
+    return `SAR ${parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
   };
 
   return (
@@ -274,6 +408,116 @@ const LeaseTermination = () => {
           <i className="fas fa-plus me-2"></i>
           New Lease Termination
         </Button>
+      </div>
+
+      {/* Filters and Search Bar */}
+      <Card className="mb-4">
+        <Card.Body>
+          <Row className="g-3">
+            <Col md={4}>
+              <Form onSubmit={handleSearch}>
+                <InputGroup>
+                  <Form.Control
+                    placeholder="Search by termination number or lease number"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <Button variant="outline-secondary" type="submit">
+                    <i className="fas fa-search"></i>
+                  </Button>
+                </InputGroup>
+              </Form>
+            </Col>
+            
+            <Col md={2}>
+              <Form.Select
+                value={filterStatus} 
+                onChange={(e) => handleStatusFilterChange(e.target.value)}
+              >
+                <option value="">All Status</option>
+                <option value="draft">Draft</option>
+                <option value="pending_approval">Pending Approval</option>
+                <option value="approved">Approved</option>
+                <option value="completed">Completed</option>
+                <option value="rejected">Rejected</option>
+                <option value="cancelled">Cancelled</option>
+              </Form.Select>
+            </Col>
+            
+            <Col md={2}>
+              <Form.Select
+                value={filterType} 
+                onChange={(e) => handleTypeFilterChange(e.target.value)}
+              >
+                <option value="">All Types</option>
+                <option value="normal">Normal Termination</option>
+                <option value="early">Early Termination</option>
+              </Form.Select>
+            </Col>
+            
+            <Col md={4} className="d-flex gap-2">
+              <Button 
+                variant="outline-secondary" 
+                onClick={handleClearFilters}
+                title="Clear all filters"
+                disabled={!searchTerm && !filterStatus && !filterType}
+              >
+                <i className="fas fa-times me-1"></i>
+                Clear Filters
+              </Button>
+              
+              <Dropdown>
+                <Dropdown.Toggle variant="outline-secondary">
+                  {pagination.pageSize} per page
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(10)}>10</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(25)}>25</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(50)}>50</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(100)}>100</Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+            </Col>
+          </Row>
+          
+          {/* Active filters display */}
+          {(searchTerm || filterStatus || filterType) && (
+            <div className="mt-3">
+              <small className="text-muted me-2">Active filters:</small>
+              {filterStatus && (
+                <Badge bg="info" className="me-2" style={{ cursor: 'pointer' }}>
+                  Status: {filterStatus}
+                  <i className="fas fa-times ms-1" onClick={() => handleStatusFilterChange('')}></i>
+                </Badge>
+              )}
+              {filterType && (
+                <Badge bg="info" className="me-2" style={{ cursor: 'pointer' }}>
+                  Type: {filterType === 'normal' ? 'Normal' : 'Early'}
+                  <i className="fas fa-times ms-1" onClick={() => handleTypeFilterChange('')}></i>
+                </Badge>
+              )}
+              {searchTerm && (
+                <Badge bg="info" className="me-2" style={{ cursor: 'pointer' }}>
+                  Search: "{searchTerm}"
+                  <i className="fas fa-times ms-1" onClick={() => {
+                    setSearchTerm('');
+                    fetchTerminations(1);
+                  }}></i>
+                </Badge>
+              )}
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
+      {/* Results Info */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <span className="text-muted">
+            Showing {terminations.length} of {pagination.totalCount} terminations
+          </span>
+        </div>
+        {terminationsLoading && <Spinner animation="border" size="sm" />}
       </div>
 
       {showForm && (
@@ -540,93 +784,126 @@ const LeaseTermination = () => {
         </Card>
       )}
 
-      <div className="mb-3">
-        <Form.Label>Filter by Status:</Form.Label>
-        <Form.Select
-          value={filterStatus} 
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{width: '200px'}}
-        >
-          <option value="all">All</option>
-          <option value="draft">Draft</option>
-          <option value="pending_approval">Pending Approval</option>
-          <option value="approved">Approved</option>
-          <option value="completed">Completed</option>
-          <option value="rejected">Rejected</option>
-          <option value="cancelled">Cancelled</option>
-        </Form.Select>
-      </div>
-
       <div>
         <Card>
           <Card.Body>
-            <Table responsive hover>
-              <thead>
-                <tr>
-                  <th>Termination #</th>
-                  <th>Lease #</th>
-                  <th>Type</th>
-                  <th>Date</th>
-                  <th>Refund/Charge</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTerminations.length > 0 ? (
-                  filteredTerminations.map((term) => (
-                    <tr key={term.id}>
-                      <td>
-                        <strong>{term.termination_number}</strong>
-                      </td>
-                      <td>{term.lease_details?.lease_number}</td>
-                      <td>
-                        <Badge bg={term.termination_type === 'early' ? 'warning' : 'info'}>
-                          {getTypeLabel(term.termination_type)}
-                        </Badge>
-                      </td>
-                      <td>{term.termination_date}</td>
-                      <td>
-                        <strong className={parseFloat(term.net_refund) > 0 ? 'text-success' : 'text-danger'}>
-                          {parseFloat(term.net_refund) > 0 ? '↓ ' : '↑ '}
-                          SAR {Math.abs(parseFloat(term.net_refund)).toFixed(2)}
-                        </strong>
-                      </td>
-                      <td>
-                        <Badge bg={getStatusBadgeClass(term.status)}>
-                          {term.status.replace('_', ' ').toUpperCase()}
-                        </Badge>
-                      </td>
-                      <td className="actions-cell">
-                        <Button 
-                          size="sm"
-                          variant="info"
-                          className="me-2"
-                          onClick={() => navigate(`/lease-termination/${term.id}`)}
-                          title="View termination details"
-                        >
-                          <i className="fas fa-eye"></i>
-                        </Button>
-                        <Button 
-                          size="sm"
-                          variant="warning"
-                          onClick={() => handleEdit(term)}
-                          title="Edit termination"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </Button>
-                      </td>
+            {terminationsLoading && terminations.length === 0 ? (
+              <div className="text-center py-5">
+                <Spinner animation="border" />
+                <p className="mt-2">Loading terminations...</p>
+              </div>
+            ) : (
+              <>
+                <Table responsive hover>
+                  <thead className="table-header">
+                    <tr>
+                      <th>Termination #</th>
+                      <th>Lease #</th>
+                      <th>Type</th>
+                      <th>Date</th>
+                      <th>Refund/Charge</th>
+                      <th>Status</th>
+                      <th>Created</th>
+                      <th>Actions</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="text-center text-muted">
-                      No lease terminations found
-                    </td>
-                  </tr>
+                  </thead>
+                  <tbody>
+                    {terminations.length > 0 ? (
+                      terminations.map((term) => (
+                        <tr key={term.id}>
+                          <td>
+                            <strong>{term.termination_number}</strong>
+                          </td>
+                          <td>{term.lease_details?.lease_number || term.lease?.lease_number || 'N/A'}</td>
+                          <td>
+                            <Badge bg={term.termination_type === 'early' ? 'warning' : 'info'}>
+                              {getTypeLabel(term.termination_type)}
+                            </Badge>
+                          </td>
+                          <td>{formatDate(term.termination_date)}</td>
+                          <td>
+                            <strong className={parseFloat(term.net_refund || term.refundable_amount) > 0 ? 'text-success' : 'text-danger'}>
+                              {parseFloat(term.net_refund || term.refundable_amount) > 0 ? '↓ ' : '↑ '}
+                              {formatCurrency(Math.abs(parseFloat(term.net_refund || term.refundable_amount || 0)))}
+                            </strong>
+                          </td>
+                          <td>
+                            <Badge bg={getStatusBadgeClass(term.status)}>
+                              {term.status.replace('_', ' ').toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td>
+                            <small className="text-muted">
+                              {formatDate(term.created_at)}
+                            </small>
+                          </td>
+                          <td className="actions-cell">
+                            <Button 
+                              size="sm"
+                              variant="info"
+                              className="me-2"
+                              onClick={() => navigate(`/lease-termination/${term.id}`)}
+                              title="View termination details"
+                            >
+                              <i className="fas fa-eye"></i>
+                            </Button>
+                            <Button 
+                              size="sm"
+                              variant="warning"
+                              onClick={() => handleEdit(term)}
+                              title="Edit termination"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="text-center text-muted py-4">
+                          No lease terminations found. Try changing your filters or create a new termination.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+
+                {/* Pagination */}
+                {pagination.totalPages > 1 && pagination.totalCount > pagination.pageSize && (
+                  <div className="d-flex justify-content-between align-items-center mt-4">
+                    <div className="text-muted">
+                      Page {pagination.page} of {pagination.totalPages}
+                    </div>
+                    
+                    <Pagination>
+                      <Pagination.First 
+                        onClick={() => handlePageChange(1)} 
+                        disabled={pagination.page === 1}
+                      />
+                      <Pagination.Prev 
+                        onClick={() => handlePageChange(pagination.page - 1)} 
+                        disabled={pagination.page === 1}
+                      />
+                      
+                      {renderPaginationItems()}
+                      
+                      <Pagination.Next 
+                        onClick={() => handlePageChange(pagination.page + 1)} 
+                        disabled={pagination.page === pagination.totalPages}
+                      />
+                      <Pagination.Last 
+                        onClick={() => handlePageChange(pagination.totalPages)} 
+                        disabled={pagination.page === pagination.totalPages}
+                      />
+                    </Pagination>
+                    
+                    <div className="text-muted">
+                      {pagination.totalCount} total terminations
+                    </div>
+                  </div>
                 )}
-              </tbody>
-            </Table>
+              </>
+            )}
           </Card.Body>
         </Card>
       </div>

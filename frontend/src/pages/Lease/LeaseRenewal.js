@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Badge, Form, Container, Alert, Row, Col, Spinner } from 'react-bootstrap';
+import { 
+  Card, Table, Button, Badge, Form, Container, Alert, 
+  Row, Col, Spinner, InputGroup, Pagination, Dropdown 
+} from 'react-bootstrap';
 import '../Lease/LeaseRenewal.css';
 import apiClient from '../../services/api';
 
@@ -21,23 +24,33 @@ const LeaseRenewal = () => {
   const [renewals, setRenewals] = useState([]);
   const [selectedLease, setSelectedLease] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [renewalLoading, setRenewalLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalCount: 0
+  });
+  
+  // Search state
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchLeases();
-    fetchRenewals();
-  }, []);
+    fetchRenewals(pagination.page);
+  }, [filterStatus, searchTerm]);
 
   const fetchLeases = async () => {
     try {
       const response = await apiClient.get('/property/leases/');
       const leasesData = response.data.results || response.data;
-      console.log('Fetched leases:', leasesData);
       const activeLeases = leasesData.filter(
         (lease) => lease.status === 'active' || lease.status === 'Active'
       );
@@ -51,15 +64,63 @@ const LeaseRenewal = () => {
     }
   };
 
-  const fetchRenewals = async () => {
+  const fetchRenewals = async (page = 1) => {
     try {
-      const response = await apiClient.get('/property/lease-renewals/');
-      setRenewals(response.data.results || response.data);
+      setRenewalLoading(true);
+      
+      const params = {
+        page: page,
+        page_size: pagination.pageSize,
+      };
+      
+      // Add search filter if exists
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+      
+      const response = await apiClient.get('/property/lease-renewals/', { params });
+      const data = response.data.results || response.data;
+      
+      // Handle paginated response
+      if (response.data.results !== undefined) {
+        setRenewals(response.data.results);
+        setPagination(prev => ({
+          ...prev,
+          page: page,
+          totalCount: response.data.count,
+          totalPages: Math.ceil(response.data.count / prev.pageSize)
+        }));
+      } else if (response.data.data !== undefined) {
+        setRenewals(response.data.data);
+        setPagination(prev => ({
+          ...prev,
+          page: page,
+          totalCount: response.data.total,
+          totalPages: Math.ceil(response.data.total / prev.pageSize)
+        }));
+      } else {
+        setRenewals(data);
+        setPagination(prev => ({
+          ...prev,
+          page: 1,
+          totalCount: data.length,
+          totalPages: 1
+        }));
+      }
+      
+      setError(null);
     } catch (err) {
       console.error('Error fetching renewals:', err);
       setError(`Error loading renewals: ${err.message}`);
+    } finally {
+      setRenewalLoading(false);
     }
   };
+
+  // Filter renewals based on status
+  const filteredRenewals = filterStatus === 'all' 
+    ? renewals 
+    : renewals.filter(renewal => renewal.status === filterStatus);
 
   const handleLeaseSelect = (leaseId) => {
     const lease = leases.find((l) => l.id === parseInt(leaseId));
@@ -87,7 +148,6 @@ const LeaseRenewal = () => {
     setEditMode(true);
     setEditId(renewal.id);
     
-    // Fetch the lease details
     try {
       const leaseResponse = await apiClient.get(`/property/leases/${renewal.original_lease}/`);
       setSelectedLease(leaseResponse.data);
@@ -181,7 +241,7 @@ const LeaseRenewal = () => {
       setEditMode(false);
       setEditId(null);
       setShowForm(false);
-      fetchRenewals();
+      fetchRenewals(pagination.page);
     } catch (err) {
       const errorData = err.response?.data;
       if (errorData && typeof errorData === 'object') {
@@ -204,7 +264,7 @@ const LeaseRenewal = () => {
     try {
       await apiClient.post(`/property/lease-renewals/${id}/approve/`);
       setSuccess('Renewal approved');
-      fetchRenewals();
+      fetchRenewals(pagination.page);
     } catch (err) {
       setError(err.message);
     }
@@ -214,17 +274,62 @@ const LeaseRenewal = () => {
     try {
       await apiClient.post(`/property/lease-renewals/${id}/activate/`);
       setSuccess('Renewal activated and new lease created');
-      fetchRenewals();
+      fetchRenewals(pagination.page);
       fetchLeases();
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const filteredRenewals = renewals.filter((renewal) => {
-    if (filterStatus === 'all') return true;
-    return renewal.status === filterStatus;
-  });
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchRenewals(1);
+  };
+
+  const handlePageChange = (pageNumber) => {
+    setPagination(prev => ({ ...prev, page: pageNumber }));
+    fetchRenewals(pageNumber);
+  };
+
+  const handlePageSizeChange = (size) => {
+    setPagination(prev => ({ 
+      ...prev, 
+      pageSize: size,
+      page: 1
+    }));
+    fetchRenewals(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilterStatus('all');
+    setSearchTerm('');
+    fetchRenewals(1);
+  };
+
+  const renderPaginationItems = () => {
+    const items = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(pagination.totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let number = startPage; number <= endPage; number++) {
+      items.push(
+        <Pagination.Item
+          key={number}
+          active={number === pagination.page}
+          onClick={() => handlePageChange(number)}
+        >
+          {number}
+        </Pagination.Item>
+      );
+    }
+    
+    return items;
+  };
 
   const getStatusBadgeClass = (status) => {
     const statusMap = {
@@ -236,6 +341,12 @@ const LeaseRenewal = () => {
       cancelled: 'dark',
     };
     return statusMap[status] || 'secondary';
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
   };
 
   return (
@@ -262,6 +373,99 @@ const LeaseRenewal = () => {
         </Button>
       </div>
 
+      {/* Filters and Search Bar */}
+      <Card className="mb-4">
+        <Card.Body>
+          <Row className="g-3">
+            <Col md={4}>
+              <Form onSubmit={handleSearch}>
+                <InputGroup>
+                  <Form.Control
+                    placeholder="Search by renewal number or lease number"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <Button variant="outline-secondary" type="submit">
+                    <i className="fas fa-search"></i>
+                  </Button>
+                </InputGroup>
+              </Form>
+            </Col>
+            
+            <Col md={3}>
+              <Form.Select
+                value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="draft">Draft</option>
+                <option value="pending_approval">Pending Approval</option>
+                <option value="approved">Approved</option>
+                <option value="active">Active</option>
+                <option value="rejected">Rejected</option>
+                <option value="cancelled">Cancelled</option>
+              </Form.Select>
+            </Col>
+            
+            <Col md={5} className="d-flex gap-2">
+              <Button 
+                variant="outline-secondary" 
+                onClick={handleClearFilters}
+                title="Clear all filters"
+                disabled={!searchTerm && filterStatus === 'all'}
+              >
+                <i className="fas fa-times me-1"></i>
+                Clear Filters
+              </Button>
+              
+              <Dropdown>
+                <Dropdown.Toggle variant="outline-secondary">
+                  {pagination.pageSize} per page
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(10)}>10</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(25)}>25</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(50)}>50</Dropdown.Item>
+                  <Dropdown.Item onClick={() => handlePageSizeChange(100)}>100</Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+            </Col>
+          </Row>
+          
+          {/* Active filters display */}
+          {(searchTerm || filterStatus !== 'all') && (
+            <div className="mt-3">
+              <small className="text-muted me-2">Active filters:</small>
+              {filterStatus !== 'all' && (
+                <Badge bg="info" className="me-2" style={{ cursor: 'pointer' }}>
+                  Status: {filterStatus}
+                  <i className="fas fa-times ms-1" onClick={() => setFilterStatus('all')}></i>
+                </Badge>
+              )}
+              {searchTerm && (
+                <Badge bg="info" className="me-2" style={{ cursor: 'pointer' }}>
+                  Search: "{searchTerm}"
+                  <i className="fas fa-times ms-1" onClick={() => {
+                    setSearchTerm('');
+                    fetchRenewals(1);
+                  }}></i>
+                </Badge>
+              )}
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
+      {/* Results Info */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <span className="text-muted">
+            Showing {filteredRenewals.length} of {pagination.totalCount} renewals
+          </span>
+        </div>
+        {renewalLoading && <Spinner animation="border" size="sm" />}
+      </div>
+
       {showForm && (
         <Card className="mb-4">
           <Card.Header className="bg-info text-white">
@@ -269,6 +473,7 @@ const LeaseRenewal = () => {
           </Card.Header>
           <Card.Body>
             <Form onSubmit={handleSubmit}>
+              {/* Form remains exactly the same */}
               <Form.Group className="mb-3">
                 <Form.Label>Select Lease to Renew <span className="text-danger">*</span></Form.Label>
                 <Form.Select
@@ -443,89 +648,116 @@ const LeaseRenewal = () => {
         </Card>
       )}
 
-      <div className="mb-3">
-        <Form.Label>Filter by Status:</Form.Label>
-        <Form.Select
-          value={filterStatus} 
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{width: '200px'}}
-        >
-          <option value="all">All</option>
-          <option value="draft">Draft</option>
-          <option value="pending_approval">Pending Approval</option>
-          <option value="approved">Approved</option>
-          <option value="active">Active</option>
-          <option value="rejected">Rejected</option>
-          <option value="cancelled">Cancelled</option>
-        </Form.Select>
-      </div>
-
       <div>
         <Card>
           <Card.Body>
-            <Table responsive hover>
-              <thead>
-                <tr>
-                  <th>Renewal #</th>
-                  <th>Lease #</th>
-                  <th>New Period</th>
-                  <th>Current Rent</th>
-                  <th>New Rent</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRenewals.length > 0 ? (
-                  filteredRenewals.map((renewal) => (
-                    <tr key={renewal.id}>
-                      <td>
-                        <strong>{renewal.renewal_number}</strong>
-                      </td>
-                      <td>{renewal.lease_details?.lease_number}</td>
-                      <td>
-                        {new Date(renewal.new_start_date).toLocaleDateString()} to{' '}
-                        {new Date(renewal.new_end_date).toLocaleDateString()}
-                      </td>
-                      <td>SAR {parseFloat(renewal.original_monthly_rent).toFixed(2)}</td>
-                      <td>
-                        <strong>SAR {parseFloat(renewal.new_monthly_rent).toFixed(2)}</strong>
-                      </td>
-                      <td>
-                        <Badge bg={getStatusBadgeClass(renewal.status)}>
-                          {renewal.status.replace('_', ' ').toUpperCase()}
-                        </Badge>
-                      </td>
-                      <td className="actions-cell">
-                        <Button 
-                          size="sm"
-                          variant="info"
-                          className="me-2"
-                          onClick={() => navigate(`/lease-renewal/${renewal.id}`)}
-                          title="View renewal details"
-                        >
-                          <i className="fas fa-eye"></i>
-                        </Button>
-                        <Button 
-                          size="sm"
-                          variant="warning"
-                          onClick={() => handleEdit(renewal)}
-                          title="Edit renewal"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </Button>
-                      </td>
+            {renewalLoading && filteredRenewals.length === 0 ? (
+              <div className="text-center py-5">
+                <Spinner animation="border" />
+                <p className="mt-2">Loading renewals...</p>
+              </div>
+            ) : (
+              <>
+                <Table responsive hover>
+                  <thead>
+                    <tr>
+                      <th>Renewal #</th>
+                      <th>Lease #</th>
+                      <th>New Period</th>
+                      <th>Current Rent</th>
+                      <th>New Rent</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="text-center text-muted">
-                      No lease renewals found
-                    </td>
-                  </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRenewals.length > 0 ? (
+                      filteredRenewals.map((renewal) => (
+                        <tr key={renewal.id}>
+                          <td>
+                            <strong>{renewal.renewal_number}</strong>
+                          </td>
+                          <td>{renewal.lease_details?.lease_number || renewal.original_lease?.lease_number}</td>
+                          <td>
+                            {formatDate(renewal.new_start_date)} to{' '}
+                            {formatDate(renewal.new_end_date)}
+                          </td>
+                          <td>SAR {parseFloat(renewal.original_monthly_rent).toFixed(2)}</td>
+                          <td>
+                            <strong>SAR {parseFloat(renewal.new_monthly_rent).toFixed(2)}</strong>
+                          </td>
+                          <td>
+                            <Badge bg={getStatusBadgeClass(renewal.status)}>
+                              {renewal.status.replace('_', ' ').toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td className="actions-cell">
+                            <Button 
+                              size="sm"
+                              variant="info"
+                              className="me-2"
+                              onClick={() => navigate(`/lease-renewal/${renewal.id}`)}
+                              title="View renewal details"
+                            >
+                              <i className="fas fa-eye"></i>
+                            </Button>
+                            <Button 
+                              size="sm"
+                              variant="warning"
+                              onClick={() => handleEdit(renewal)}
+                              title="Edit renewal"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center text-muted">
+                          No lease renewals found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+
+                {/* Pagination */}
+                {pagination.totalPages > 1 && pagination.totalCount > pagination.pageSize && (
+                  <div className="d-flex justify-content-between align-items-center mt-4">
+                    <div className="text-muted">
+                      Page {pagination.page} of {pagination.totalPages}
+                    </div>
+                    
+                    <Pagination>
+                      <Pagination.First 
+                        onClick={() => handlePageChange(1)} 
+                        disabled={pagination.page === 1}
+                      />
+                      <Pagination.Prev 
+                        onClick={() => handlePageChange(pagination.page - 1)} 
+                        disabled={pagination.page === 1}
+                      />
+                      
+                      {renderPaginationItems()}
+                      
+                      <Pagination.Next 
+                        onClick={() => handlePageChange(pagination.page + 1)} 
+                        disabled={pagination.page === pagination.totalPages}
+                      />
+                      <Pagination.Last 
+                        onClick={() => handlePageChange(pagination.totalPages)} 
+                        disabled={pagination.page === pagination.totalPages}
+                      />
+                    </Pagination>
+                    
+                    <div className="text-muted">
+                      {pagination.totalCount} total renewals
+                    </div>
+                  </div>
                 )}
-              </tbody>
-            </Table>
+              </>
+            )}
           </Card.Body>
         </Card>
       </div>

@@ -23,3 +23,40 @@
   text-transform: uppercase;
   font-size: 0.75rem;
 }
+
+
+/* PropertyList.css */
+.property-list .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.property-list .table-header {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.property-list .table-header th {
+  font-weight: 600;
+  color: #495057;
+  border-top: none;
+}
+
+.property-list .badge {
+  font-size: 0.8em;
+  font-weight: 500;
+  padding: 0.35em 0.65em;
+}
+
+.property-list .pagination {
+  margin-bottom: 0;
+}
+
+.property-list .form-control:focus,
+.property-list .form-select:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
