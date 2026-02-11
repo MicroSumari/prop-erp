@@ -14,6 +14,14 @@ function TenantForm() {
   const [success, setSuccess] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when form should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
+  
   // Form state - only fields that exist on backend Tenant model
   const [tenantData, setTenantData] = useState({
     first_name: '',
@@ -54,6 +62,35 @@ function TenantForm() {
     }
   };
 
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setTenantData(prev => ({
@@ -87,10 +124,10 @@ function TenantForm() {
       // Create or update tenant
       if (isEditMode) {
         await tenantService.update(id, tenantData);
-        setSuccess('Related Party updated successfully!');
+        showSuccessToast('Related Party updated successfully!');
       } else {
         await tenantService.create(tenantData);
-        setSuccess('Related Party created successfully!');
+        showSuccessToast('Related Party created successfully!');
       }
       setTimeout(() => navigate('/related-parties'), 2000);
     } catch (err) {
@@ -113,20 +150,29 @@ function TenantForm() {
         
         if (Object.keys(errors).length > 0) {
           setFieldErrors(errors);
+          showErrorToast('Please fix the errors in the form');
         }
         if (generalError) {
           setError(generalError);
+          showErrorToast(generalError);
         } else if (Object.keys(errors).length === 0) {
-          setError(errorData.detail || 'Failed to create related party');
+          const errorMsg = errorData.detail || 'Failed to create related party';
+          setError(errorMsg);
+          showErrorToast(errorMsg);
         }
       } else {
-        setError(err.response?.data?.detail || err.message || 'Failed to create related party');
+        const errorMsg = err.response?.data?.detail || err.message || 'Failed to create related party';
+        setError(errorMsg);
+        showErrorToast(errorMsg);
       }
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  // Helper variable for form disabled state
+  const isDisabled = loading || isFormDisabled;
 
   if (loadingData) {
     return (
@@ -139,7 +185,30 @@ function TenantForm() {
 
   return (
     <Container className="tenant-form-container mt-5">
-      <Card className="tenant-form-card">
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={loading}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
+      <Card className={`tenant-form-card ${isDisabled ? 'form-disabled' : ''}`}>
         <Card.Header className="bg-primary text-white">
           <h2 className="mb-0">
             <i className={`fas ${isEditMode ? 'fa-user-edit' : 'fa-user-plus'} me-2`}></i>
@@ -164,6 +233,7 @@ function TenantForm() {
                     onChange={handleChange}
                     placeholder="First name"
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.first_name}
                   />
                   {fieldErrors.first_name && (
@@ -183,6 +253,7 @@ function TenantForm() {
                     onChange={handleChange}
                     placeholder="Last name"
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.last_name}
                   />
                   {fieldErrors.last_name && (
@@ -207,6 +278,7 @@ function TenantForm() {
                     onChange={handleChange}
                     placeholder="Email address"
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.email}
                   />
                   {fieldErrors.email && (
@@ -226,6 +298,7 @@ function TenantForm() {
                     onChange={handleChange}
                     placeholder="Phone number"
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.phone}
                   />
                   {fieldErrors.phone && (
@@ -249,6 +322,7 @@ function TenantForm() {
                     value={tenantData.move_in_date}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.move_in_date}
                   />
                   {fieldErrors.move_in_date && (
@@ -266,6 +340,7 @@ function TenantForm() {
                     name="move_out_date"
                     value={tenantData.move_out_date}
                     onChange={handleChange}
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.move_out_date}
                   />
                   {fieldErrors.move_out_date && (
@@ -289,6 +364,7 @@ function TenantForm() {
                     value={tenantData.emergency_contact}
                     onChange={handleChange}
                     placeholder="Emergency contact name"
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.emergency_contact}
                   />
                   {fieldErrors.emergency_contact && (
@@ -307,6 +383,7 @@ function TenantForm() {
                     value={tenantData.emergency_contact_phone}
                     onChange={handleChange}
                     placeholder="Emergency contact phone number"
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.emergency_contact_phone}
                   />
                   {fieldErrors.emergency_contact_phone && (
@@ -322,13 +399,13 @@ function TenantForm() {
               <Button
                 variant="primary"
                 type="submit"
-                disabled={loading}
+                disabled={isDisabled}
                 className="btn-lg"
               >
                 {loading ? (
                   <>
                     <Spinner as="span" animation="border" size="sm" className="me-2" />
-                    Creating...
+                    {isEditMode ? 'Updating...' : 'Creating...'}
                   </>
                 ) : (
                   <>
@@ -341,7 +418,7 @@ function TenantForm() {
                 variant="secondary"
                 onClick={() => navigate('/related-parties')}
                 className="btn-lg"
-                disabled={loading}
+                disabled={isDisabled}
               >
                 <i className="fas fa-times me-2"></i>
                 Cancel

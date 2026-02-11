@@ -13,9 +13,11 @@ import {
   FormControl,
   Pagination,
   Badge,
-  Dropdown
+  Dropdown,
+  Spinner
 } from 'react-bootstrap';
 import apiClient from '../../services/api';
+import './ChequeRegister.css'; // Create this CSS file
 
 const ChequeRegister = () => {
   const [cheques, setCheques] = useState([]);
@@ -25,6 +27,14 @@ const ChequeRegister = () => {
   const [showEdit, setShowEdit] = useState(false);
   const [viewItem, setViewItem] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when forms should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,6 +64,36 @@ const ChequeRegister = () => {
   const [accounts, setAccounts] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
 
+  // Toast functions
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+  };
+
   // Build query parameters for API
   const buildQueryParams = () => {
     const params = {
@@ -62,15 +102,10 @@ const ChequeRegister = () => {
       ordering: sortField,
     };
     
-    // Use search parameter for text searches
     if (searchQuery) params.search = searchQuery;
-    
-    // Use direct filter fields (exact matches)
     if (chequeTypeFilter) params.cheque_type = chequeTypeFilter;
     if (statusFilter) params.status = statusFilter;
     if (bankFilter) params.bank_name = bankFilter;
-    
-    // Date filters use __ lookups
     if (dateFromFilter) params.cheque_date__gte = dateFromFilter;
     if (dateToFilter) params.cheque_date__lte = dateToFilter;
     
@@ -89,7 +124,6 @@ const ChequeRegister = () => {
         apiClient.get('/accounts/cost-centers/'),
       ]);
       
-      // Handle paginated response
       if (chequeRes.data.results) {
         setCheques(chequeRes.data.results);
         setTotalItems(chequeRes.data.count || chequeRes.data.results.length);
@@ -113,12 +147,10 @@ const ChequeRegister = () => {
 
   const normalizeList = (data) => (Array.isArray(data) ? data : (data?.results || []));
 
-  // Fetch data when filters or pagination change
   useEffect(() => {
     fetchData();
   }, [currentPage, sortField, chequeTypeFilter, statusFilter, bankFilter, dateFromFilter, dateToFilter]);
 
-  // Debounced search
   useEffect(() => {
     if (searchQuery !== undefined) {
       setCurrentPage(1);
@@ -133,48 +165,72 @@ const ChequeRegister = () => {
   const handleClear = async (id) => {
     setError('');
     setSuccess('');
+    setIsFormDisabled(true);
     try {
       await apiClient.post(`/accounts/cheque-registers/${id}/mark_cleared/`);
+      showSuccessToast('Cheque cleared successfully');
       setSuccess('Cheque cleared successfully');
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to clear cheque');
+      const errorMsg = err.response?.data?.error || 'Failed to clear cheque';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setIsFormDisabled(false);
     }
   };
 
   const handleDeposit = async (id) => {
     setError('');
     setSuccess('');
+    setIsFormDisabled(true);
     try {
       await apiClient.post(`/accounts/cheque-registers/${id}/mark_deposited/`);
+      showSuccessToast('Cheque marked as deposited');
       setSuccess('Cheque marked as deposited');
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to mark cheque as deposited');
+      const errorMsg = err.response?.data?.error || 'Failed to mark cheque as deposited';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setIsFormDisabled(false);
     }
   };
 
   const handleBounce = async (id) => {
     setError('');
     setSuccess('');
+    setIsFormDisabled(true);
     try {
       await apiClient.post(`/accounts/cheque-registers/${id}/mark_bounced/`);
+      showSuccessToast('Cheque marked as bounced');
       setSuccess('Cheque marked as bounced');
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to mark cheque as bounced');
+      const errorMsg = err.response?.data?.error || 'Failed to mark cheque as bounced';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setIsFormDisabled(false);
     }
   };
 
   const handleCancel = async (id) => {
     setError('');
     setSuccess('');
+    setIsFormDisabled(true);
     try {
       await apiClient.post(`/accounts/cheque-registers/${id}/cancel/`);
+      showSuccessToast('Cheque cancelled');
       setSuccess('Cheque cancelled');
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to cancel cheque');
+      const errorMsg = err.response?.data?.error || 'Failed to cancel cheque';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setIsFormDisabled(false);
     }
   };
 
@@ -200,17 +256,23 @@ const ChequeRegister = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsFormDisabled(true);
+    
     try {
       await apiClient.patch(`/accounts/cheque-registers/${editingId}/`, {
         ...editData,
         amount: parseFloat(editData.amount || 0),
       });
-      setSuccess('Cheque updated successfully');
+      showSuccessToast('Cheque updated successfully');
       setShowEdit(false);
       setEditingId(null);
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update cheque');
+      const errorMsg = err.response?.data?.message || 'Failed to update cheque';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setIsFormDisabled(false);
     }
   };
 
@@ -301,7 +363,6 @@ const ChequeRegister = () => {
     return voucher;
   };
 
-  // Generate pagination items
   const renderPaginationItems = () => {
     const items = [];
     const maxVisiblePages = 5;
@@ -313,10 +374,9 @@ const ChequeRegister = () => {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
     
-    // First page
     if (startPage > 1) {
       items.push(
-        <Pagination.Item key={1} onClick={() => setCurrentPage(1)}>
+        <Pagination.Item key={1} onClick={() => setCurrentPage(1)} disabled={isFormDisabled}>
           1
         </Pagination.Item>
       );
@@ -325,20 +385,19 @@ const ChequeRegister = () => {
       }
     }
     
-    // Page numbers
     for (let i = startPage; i <= endPage; i++) {
       items.push(
         <Pagination.Item
           key={i}
           active={i === currentPage}
           onClick={() => setCurrentPage(i)}
+          disabled={isFormDisabled}
         >
           {i}
         </Pagination.Item>
       );
     }
     
-    // Last page
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
         items.push(<Pagination.Ellipsis key="ellipsis-end" />);
@@ -347,6 +406,7 @@ const ChequeRegister = () => {
         <Pagination.Item
           key={totalPages}
           onClick={() => setCurrentPage(totalPages)}
+          disabled={isFormDisabled}
         >
           {totalPages}
         </Pagination.Item>
@@ -365,7 +425,6 @@ const ChequeRegister = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Get unique banks for filter dropdown
   const getUniqueBanks = () => {
     const banks = cheques
       .map(c => c.bank_name)
@@ -378,6 +437,29 @@ const ChequeRegister = () => {
 
   return (
     <Container fluid>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={isFormDisabled}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
       <div className="page-header mb-4">
         <h1>
           <i className="fas fa-money-check me-2"></i>
@@ -405,6 +487,7 @@ const ChequeRegister = () => {
                   placeholder="Search cheque #, bank, or voucher #..."
                   value={searchQuery}
                   onChange={handleSearchChange}
+                  disabled={isFormDisabled}
                 />
               </InputGroup>
             </Col>
@@ -412,6 +495,7 @@ const ChequeRegister = () => {
               <Form.Select 
                 value={chequeTypeFilter} 
                 onChange={(e) => handleFilterChange('cheque_type', e.target.value)}
+                disabled={isFormDisabled}
               >
                 <option value="">All Cheque Types</option>
                 <option value="incoming">Incoming</option>
@@ -419,7 +503,7 @@ const ChequeRegister = () => {
               </Form.Select>
             </Col>
             <Col md={3}>
-              <Button variant="outline-secondary" onClick={clearFilters}>
+              <Button variant="outline-secondary" onClick={clearFilters} disabled={isFormDisabled}>
                 <i className="fas fa-times me-2"></i>
                 Clear Filters
               </Button>
@@ -432,6 +516,7 @@ const ChequeRegister = () => {
                 <Form.Select 
                   value={statusFilter} 
                   onChange={(e) => handleFilterChange('status', e.target.value)}
+                  disabled={isFormDisabled}
                 >
                   <option value="">All Statuses</option>
                   <option value="received">Received</option>
@@ -448,6 +533,7 @@ const ChequeRegister = () => {
                 <Form.Select 
                   value={bankFilter} 
                   onChange={(e) => handleFilterChange('bank', e.target.value)}
+                  disabled={isFormDisabled}
                 >
                   <option value="">All Banks</option>
                   {getUniqueBanks().map((bank, index) => (
@@ -463,6 +549,7 @@ const ChequeRegister = () => {
                   type="date"
                   value={dateFromFilter}
                   onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                  disabled={isFormDisabled}
                 />
               </Form.Group>
             </Col>
@@ -473,6 +560,7 @@ const ChequeRegister = () => {
                   type="date"
                   value={dateToFilter}
                   onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                  disabled={isFormDisabled}
                 />
               </Form.Group>
             </Col>
@@ -509,8 +597,8 @@ const ChequeRegister = () => {
               <thead>
                 <tr>
                   <th 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('cheque_type')}
+                    style={{ cursor: isFormDisabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !isFormDisabled && handleSort('cheque_type')}
                     title="Click to sort"
                   >
                     Type
@@ -518,8 +606,8 @@ const ChequeRegister = () => {
                     {sortField === '-cheque_type' && <i className="fas fa-sort-down ms-1"></i>}
                   </th>
                   <th 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('cheque_number')}
+                    style={{ cursor: isFormDisabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !isFormDisabled && handleSort('cheque_number')}
                     title="Click to sort"
                   >
                     Cheque #
@@ -527,8 +615,8 @@ const ChequeRegister = () => {
                     {sortField === '-cheque_number' && <i className="fas fa-sort-down ms-1"></i>}
                   </th>
                   <th 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('cheque_date')}
+                    style={{ cursor: isFormDisabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !isFormDisabled && handleSort('cheque_date')}
                     title="Click to sort"
                   >
                     Date
@@ -536,8 +624,8 @@ const ChequeRegister = () => {
                     {sortField === '-cheque_date' && <i className="fas fa-sort-down ms-1"></i>}
                   </th>
                   <th 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('amount')}
+                    style={{ cursor: isFormDisabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !isFormDisabled && handleSort('amount')}
                     title="Click to sort"
                   >
                     Amount
@@ -586,6 +674,7 @@ const ChequeRegister = () => {
                             size="sm"
                             onClick={() => openView(cheque)}
                             title="View details"
+                            disabled={isFormDisabled}
                           >
                             <i className="fas fa-eye"></i>
                           </Button>
@@ -594,25 +683,27 @@ const ChequeRegister = () => {
                             size="sm"
                             onClick={() => openEdit(cheque)}
                             title="Edit cheque"
-                            disabled={cheque.status === 'cleared' || cheque.status === 'cancelled'}
+                            disabled={cheque.status === 'cleared' || cheque.status === 'cancelled' || isFormDisabled}
                           >
                             <i className="fas fa-edit"></i>
                           </Button>
                           
-                          {/* Status-specific actions dropdown */}
                           <Dropdown>
                             <Dropdown.Toggle 
                               size="sm" 
                               variant="outline-primary" 
                               id={`dropdown-actions-${cheque.id}`}
-                              disabled={cheque.status === 'cancelled'}
+                              disabled={cheque.status === 'cancelled' || isFormDisabled}
                             >
                               <i className="fas fa-cog"></i> Actions
                             </Dropdown.Toggle>
                             <Dropdown.Menu>
                               {cheque.status === 'received' && (
                                 <>
-                                  <Dropdown.Item onClick={() => handleDeposit(cheque.id)}>
+                                  <Dropdown.Item 
+                                    onClick={() => handleDeposit(cheque.id)}
+                                    disabled={isFormDisabled}
+                                  >
                                     <i className="fas fa-piggy-bank me-2"></i> Mark as Deposited
                                   </Dropdown.Item>
                                   <Dropdown.Divider />
@@ -620,20 +711,27 @@ const ChequeRegister = () => {
                               )}
                               {cheque.status === 'deposited' && (
                                 <>
-                                  <Dropdown.Item onClick={() => handleClear(cheque.id)}>
+                                  <Dropdown.Item 
+                                    onClick={() => handleClear(cheque.id)}
+                                    disabled={isFormDisabled}
+                                  >
                                     <i className="fas fa-check-circle me-2"></i> Mark as Cleared
                                   </Dropdown.Item>
                                   <Dropdown.Divider />
                                 </>
                               )}
                               {cheque.status === 'cleared' && (
-                                <Dropdown.Item onClick={() => handleBounce(cheque.id)}>
+                                <Dropdown.Item 
+                                  onClick={() => handleBounce(cheque.id)}
+                                  disabled={isFormDisabled}
+                                >
                                   <i className="fas fa-exclamation-triangle me-2"></i> Mark as Bounced
                                 </Dropdown.Item>
                               )}
                               <Dropdown.Item 
                                 onClick={() => handleCancel(cheque.id)}
                                 className={cheque.status === 'cancelled' ? 'disabled' : ''}
+                                disabled={cheque.status === 'cancelled' || isFormDisabled}
                               >
                                 <i className="fas fa-ban me-2"></i> Cancel Cheque
                               </Dropdown.Item>
@@ -670,23 +768,23 @@ const ChequeRegister = () => {
               <Pagination>
                 <Pagination.First 
                   onClick={() => setCurrentPage(1)} 
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isFormDisabled}
                   title="First Page"
                 />
                 <Pagination.Prev 
                   onClick={() => setCurrentPage(currentPage - 1)} 
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isFormDisabled}
                   title="Previous Page"
                 />
                 {renderPaginationItems()}
                 <Pagination.Next 
                   onClick={() => setCurrentPage(currentPage + 1)} 
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || isFormDisabled}
                   title="Next Page"
                 />
                 <Pagination.Last 
                   onClick={() => setCurrentPage(totalPages)} 
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || isFormDisabled}
                   title="Last Page"
                 />
               </Pagination>
@@ -803,7 +901,7 @@ const ChequeRegister = () => {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowView(false)}>
+          <Button variant="secondary" onClick={() => setShowView(false)} disabled={isFormDisabled}>
             Close
           </Button>
         </Modal.Footer>
@@ -845,6 +943,7 @@ const ChequeRegister = () => {
                     value={editData.cheque_date} 
                     onChange={(e) => setEditData({ ...editData, cheque_date: e.target.value })}
                     required
+                    disabled={isFormDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -857,6 +956,7 @@ const ChequeRegister = () => {
                     value={editData.amount} 
                     onChange={(e) => setEditData({ ...editData, amount: e.target.value })}
                     required
+                    disabled={isFormDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -869,6 +969,7 @@ const ChequeRegister = () => {
                     value={editData.bank_name} 
                     onChange={(e) => setEditData({ ...editData, bank_name: e.target.value })}
                     placeholder="Enter bank name"
+                    disabled={isFormDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -881,6 +982,7 @@ const ChequeRegister = () => {
                     value={editData.status} 
                     onChange={(e) => setEditData({ ...editData, status: e.target.value })}
                     required
+                    disabled={isFormDisabled}
                   >
                     <option value="received">Received</option>
                     <option value="deposited">Deposited</option>
@@ -892,8 +994,19 @@ const ChequeRegister = () => {
               </Col>
             </Row>
             <div className="d-flex justify-content-end gap-2 mt-3">
-              <Button variant="secondary" onClick={() => setShowEdit(false)}>Cancel</Button>
-              <Button type="submit" variant="primary">Save Changes</Button>
+              <Button variant="secondary" onClick={() => setShowEdit(false)} disabled={isFormDisabled}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isFormDisabled}>
+                {isFormDisabled ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
             </div>
           </Form>
         </Modal.Body>

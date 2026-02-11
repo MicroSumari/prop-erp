@@ -208,108 +208,177 @@ function PropertyList() {
       </div>
 
       {/* Filters and Search Bar */}
-      <Card className="mb-4">
-        <Card.Body>
-          <Row className="g-3">
-            <Col md={4}>
-              <Form onSubmit={handleSearch}>
-                <InputGroup>
-                  <FormControl
-                    placeholder="Search by name, property ID, or city"
-                    value={filters.search}
-                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                  />
-                  <Button variant="outline-secondary" type="submit">
-                    <i className="fas fa-search"></i>
-                  </Button>
-                </InputGroup>
-              </Form>
-            </Col>
-            
-            <Col md={2}>
-              <Form.Select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-              >
-                <option value="">All Status</option>
-                <option value="available">Available</option>
-                <option value="occupied">Occupied</option>
-                <option value="leased">Leased</option>
-              </Form.Select>
-            </Col>
-            
-            <Col md={2}>
-              <Form.Select
-                value={filters.property_type}
-                onChange={(e) => handleFilterChange('property_type', e.target.value)}
-              >
-                <option value="">All Types</option>
-                <option value="residential">Residential</option>
-                <option value="commercial">Commercial</option>
-                <option value="industrial">Industrial</option>
-                <option value="land">Land</option>
-              </Form.Select>
-            </Col>
-            
-            <Col md={2}>
-              <Form.Select
-                value={filters.ordering}
-                onChange={(e) => handleFilterChange('ordering', e.target.value)}
-              >
-                <option value="-created_at">Newest First</option>
-                <option value="created_at">Oldest First</option>
-                <option value="name">Name A-Z</option>
-                <option value="-name">Name Z-A</option>
-              </Form.Select>
-            </Col>
-            
-            <Col md={2} className="d-flex gap-2">
-              <Button 
-                variant="outline-secondary" 
-                onClick={handleClearFilters}
-                title="Clear all filters"
-              >
-                <i className="fas fa-times me-1"></i>
-                Clear
-              </Button>
-              
-              <Dropdown>
-                <Dropdown.Toggle variant="outline-secondary">
-                  {pagination.pageSize} per page
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  <Dropdown.Item onClick={() => handlePageSizeChange(10)}>10</Dropdown.Item>
-                  <Dropdown.Item onClick={() => handlePageSizeChange(25)}>25</Dropdown.Item>
-                  <Dropdown.Item onClick={() => handlePageSizeChange(50)}>50</Dropdown.Item>
-                  <Dropdown.Item onClick={() => handlePageSizeChange(100)}>100</Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown>
-            </Col>
-          </Row>
+      <Card className="mb-4 shadow-sm border-0">
+  <Card.Body className="p-4">
+    <Row className="g-3 align-items-end">
+      {/* Search Input */}
+      <Col lg={4} md={6} sm={12}>
+        <Form onSubmit={handleSearch}>
+          <Form.Label className="small text-muted mb-1">Search</Form.Label>
+          <InputGroup>
+            <FormControl
+              placeholder="Name, property ID, or city"
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+            />
+            <Button variant="primary" type="submit">
+              <i className="fas fa-search"></i>
+            </Button>
+          </InputGroup>
+        </Form>
+      </Col>
+      
+      {/* Status Filter */}
+      <Col lg={2} md={6} sm={6}>
+        <div>
+          <Form.Label className="small text-muted mb-1">Status</Form.Label>
+          <Form.Select
+            value={filters.status}
+            onChange={(e) => handleFilterChange('status', e.target.value)}
+          >
+            <option value="">All Status</option>
+            <option value="available">Available</option>
+            <option value="occupied">Occupied</option>
+            <option value="leased">Leased</option>
+          </Form.Select>
+        </div>
+      </Col>
+      
+      {/* Property Type Filter */}
+      <Col lg={2} md={6} sm={6}>
+        <div>
+          <Form.Label className="small text-muted mb-1">Type</Form.Label>
+          <Form.Select
+            value={filters.property_type}
+            onChange={(e) => handleFilterChange('property_type', e.target.value)}
+          >
+            <option value="">All Types</option>
+            <option value="residential">Residential</option>
+            <option value="commercial">Commercial</option>
+            <option value="industrial">Industrial</option>
+            <option value="land">Land</option>
+          </Form.Select>
+        </div>
+      </Col>
+      
+      {/* Sort Filter */}
+      <Col lg={2} md={6} sm={6}>
+        <div>
+          <Form.Label className="small text-muted mb-1">Sort By</Form.Label>
+          <Form.Select
+            value={filters.ordering}
+            onChange={(e) => handleFilterChange('ordering', e.target.value)}
+          >
+            <option value="-created_at">Newest First</option>
+            <option value="created_at">Oldest First</option>
+            <option value="name">Name A-Z</option>
+            <option value="-name">Name Z-A</option>
+          </Form.Select>
+        </div>
+      </Col>
+      
+      {/* Action Buttons */}
+      <Col lg={2} md={6} sm={12}>
+        <div className="d-flex gap-2 h-100">
+          <Button 
+            variant="outline-secondary" 
+            onClick={handleClearFilters}
+            title="Clear all filters"
+            className="flex-fill"
+          >
+            <i className="fas fa-times me-1"></i>
+            <span className="d-none d-lg-inline">Clear</span>
+          </Button>
           
-          {/* Active filters display */}
-          {(filters.status || filters.property_type || filters.search) && (
-            <div className="mt-3">
-              <small className="text-muted me-2">Active filters:</small>
-              {filters.status && (
-                <Badge bg="info" className="me-2">
-                  Status: {filters.status} <i className="fas fa-times ms-1" onClick={() => handleFilterChange('status', '')}></i>
-                </Badge>
-              )}
-              {filters.property_type && (
-                <Badge bg="info" className="me-2">
-                  Type: {filters.property_type} <i className="fas fa-times ms-1" onClick={() => handleFilterChange('property_type', '')}></i>
-                </Badge>
-              )}
-              {filters.search && (
-                <Badge bg="info" className="me-2">
-                  Search: "{filters.search}" <i className="fas fa-times ms-1" onClick={() => handleFilterChange('search', '')}></i>
-                </Badge>
-              )}
-            </div>
-          )}
-        </Card.Body>
-      </Card>
+          <Dropdown className="flex-fill">
+            <Dropdown.Toggle variant="outline-secondary" className="w-100">
+              <i className="fas fa-list me-1"></i>
+              <span className="d-none d-sm-inline">{pagination.pageSize}</span>
+            </Dropdown.Toggle>
+            <Dropdown.Menu align="end">
+              <Dropdown.Header className="small">Per page</Dropdown.Header>
+              <Dropdown.Divider />
+              <Dropdown.Item 
+                onClick={() => handlePageSizeChange(10)}
+                active={pagination.pageSize === 10}
+              >
+                10
+              </Dropdown.Item>
+              <Dropdown.Item 
+                onClick={() => handlePageSizeChange(25)}
+                active={pagination.pageSize === 25}
+              >
+                25
+              </Dropdown.Item>
+              <Dropdown.Item 
+                onClick={() => handlePageSizeChange(50)}
+                active={pagination.pageSize === 50}
+              >
+                50
+              </Dropdown.Item>
+              <Dropdown.Item 
+                onClick={() => handlePageSizeChange(100)}
+                active={pagination.pageSize === 100}
+              >
+                100
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </div>
+      </Col>
+    </Row>
+    
+    {/* Active Filters Display */}
+    {(filters.status || filters.property_type || filters.search) && (
+      <Row className="mt-3">
+        <Col>
+          <div className="d-flex align-items-center flex-wrap gap-2 p-3 bg-light rounded">
+            <span className="text-muted small fw-semibold">
+              <i className="fas fa-filter me-1"></i>
+              Active Filters:
+            </span>
+            {filters.status && (
+              <Badge 
+                bg="primary" 
+                className="d-flex align-items-center gap-2 py-2 px-3"
+                role="button"
+                onClick={() => handleFilterChange('status', '')}
+                style={{ cursor: 'pointer' }}
+              >
+                <span>Status: <strong>{filters.status}</strong></span>
+                <i className="fas fa-times"></i>
+              </Badge>
+            )}
+            {filters.property_type && (
+              <Badge 
+                bg="primary" 
+                className="d-flex align-items-center gap-2 py-2 px-3"
+                role="button"
+                onClick={() => handleFilterChange('property_type', '')}
+                style={{ cursor: 'pointer' }}
+              >
+                <span>Type: <strong>{filters.property_type}</strong></span>
+                <i className="fas fa-times"></i>
+              </Badge>
+            )}
+            {filters.search && (
+              <Badge 
+                bg="primary" 
+                className="d-flex align-items-center gap-2 py-2 px-3"
+                role="button"
+                onClick={() => handleFilterChange('search', '')}
+                style={{ cursor: 'pointer' }}
+              >
+                <span>Search: <strong>"{filters.search}"</strong></span>
+                <i className="fas fa-times"></i>
+              </Badge>
+            )}
+          </div>
+        </Col>
+      </Row>
+    )}
+  </Card.Body>
+</Card>
 
       {error && <Alert variant="danger">{error}</Alert>}
 

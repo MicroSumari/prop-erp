@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Card, Form, Button, Alert, Spinner, Row, Col } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../../services/api';
-import FormModal from '../../components/FormModal';
+import './LeaseRenewalForm.css';
 
 function LeaseRenewalForm() {
   const { id } = useParams();
@@ -10,9 +10,15 @@ function LeaseRenewalForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [leases, setLeases] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Toast state - remove modal states
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when form should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
+  
   const [formData, setFormData] = useState({
     original_lease: '',
     original_start_date: '',
@@ -56,30 +62,58 @@ function LeaseRenewalForm() {
     }
   };
 
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+      // Navigate after toast disappears
+      navigate('/lease-renewal');
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+    // If it was a success toast, navigate back
+    if (toastVariant === 'success') {
+      navigate('/lease-renewal');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setModalLoading(true);
-    setShowModal(true);
     setError('');
 
     try {
       if (id) {
         await apiClient.put(`/property/lease-renewals/${id}/`, formData);
-        setSuccessMessage('Lease renewal updated successfully!');
+        showSuccessToast('Lease renewal updated successfully!');
       } else {
         await apiClient.post('/property/lease-renewals/', formData);
-        setSuccessMessage('Lease renewal created successfully!');
+        showSuccessToast('Lease renewal created successfully!');
       }
-      
-      setModalLoading(false);
-      setTimeout(() => {
-        setShowModal(false);
-        navigate('/lease-renewal');
-      }, 1500);
     } catch (err) {
-      setShowModal(false);
-      setError(err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Error saving lease renewal');
+      const errorMsg = err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Error saving lease renewal';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -94,6 +128,9 @@ function LeaseRenewalForm() {
     }));
   };
 
+  // Helper variable for form disabled state
+  const isDisabled = loading || isFormDisabled;
+
   if (loading && id) {
     return (
       <Container className="mt-4 text-center">
@@ -104,7 +141,30 @@ function LeaseRenewalForm() {
 
   return (
     <Container className="mt-4">
-      <Card>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={loading}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
+      <Card className={`${isDisabled ? 'form-disabled' : ''}`}>
         <Card.Header>
           <h3>
             <i className="fas fa-redo me-2"></i>
@@ -124,7 +184,7 @@ function LeaseRenewalForm() {
                     value={formData.original_lease}
                     onChange={handleChange}
                     required
-                    disabled={!!id}
+                    disabled={!!id || isDisabled}
                   >
                     <option value="">Select Lease</option>
                     {leases.map(lease => (
@@ -143,6 +203,7 @@ function LeaseRenewalForm() {
                     value={formData.billing_cycle}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   >
                     <option value="monthly">Monthly</option>
                     <option value="quarterly">Quarterly</option>
@@ -163,7 +224,7 @@ function LeaseRenewalForm() {
                     value={formData.original_start_date}
                     onChange={handleChange}
                     required
-                    disabled={!!id}
+                    disabled={!!id || isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -176,7 +237,7 @@ function LeaseRenewalForm() {
                     value={formData.original_end_date}
                     onChange={handleChange}
                     required
-                    disabled={!!id}
+                    disabled={!!id || isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -193,7 +254,7 @@ function LeaseRenewalForm() {
                     value={formData.original_monthly_rent}
                     onChange={handleChange}
                     required
-                    disabled={!!id}
+                    disabled={!!id || isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -206,6 +267,7 @@ function LeaseRenewalForm() {
                     value={formData.new_start_date}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -221,6 +283,7 @@ function LeaseRenewalForm() {
                     value={formData.new_end_date}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -234,6 +297,7 @@ function LeaseRenewalForm() {
                     value={formData.new_monthly_rent}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -249,6 +313,7 @@ function LeaseRenewalForm() {
                     name="special_terms"
                     value={formData.special_terms}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -264,17 +329,31 @@ function LeaseRenewalForm() {
                     name="notes"
                     value={formData.notes}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
             </Row>
 
             <div className="d-flex gap-2">
-              <Button variant="primary" type="submit" disabled={loading}>
-                <i className="fas fa-save me-2"></i>
-                {loading ? 'Saving...' : (id ? 'Update' : 'Create')} Renewal
+              <Button variant="primary" type="submit" disabled={isDisabled}>
+                {loading ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-save me-2"></i>
+                    {id ? 'Update' : 'Create'} Renewal
+                  </>
+                )}
               </Button>
-              <Button variant="secondary" onClick={() => navigate('/lease-renewal')}>
+              <Button 
+                variant="secondary" 
+                onClick={() => navigate('/lease-renewal')}
+                disabled={isDisabled}
+              >
                 <i className="fas fa-times me-2"></i>
                 Cancel
               </Button>
@@ -282,16 +361,6 @@ function LeaseRenewalForm() {
           </Form>
         </Card.Body>
       </Card>
-      
-      <FormModal 
-        show={showModal}
-        loading={modalLoading}
-        message={successMessage}
-        onHide={() => {
-          setShowModal(false);
-          navigate('/lease-renewal');
-        }}
-      />
     </Container>
   );
 }

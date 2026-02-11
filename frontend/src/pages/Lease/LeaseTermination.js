@@ -387,7 +387,7 @@ const LeaseTermination = () => {
   };
 
   return (
-    <Container className="mt-4">
+    <Container fluid className="mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <div className="page-header mb-4">
@@ -850,7 +850,7 @@ const LeaseTermination = () => {
                             <Button 
                               size="sm"
                               variant="warning"
-                              onClick={() => handleEdit(term)}
+                              onClick={() => navigate(`/lease-termination/edit/${term.id}`)}
                               title="Edit termination"
                             >
                               <i className="fas fa-edit"></i>

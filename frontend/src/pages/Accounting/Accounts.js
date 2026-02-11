@@ -4,17 +4,22 @@ import {
   InputGroup, Pagination, Dropdown, Badge, Spinner
 } from 'react-bootstrap';
 import apiClient from '../../services/api';
+import './Accounts.css'; // Create this CSS file
 
 const Accounts = () => {
   const [accounts, setAccounts] = useState([]);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showView, setShowView] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
   const [loading, setLoading] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(false);
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -39,6 +44,31 @@ const Accounts = () => {
     is_active: true,
   };
   const [formData, setFormData] = useState(initialFormData);
+
+  // Toast functions
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+  };
 
   const fetchAccounts = async (page = 1) => {
     try {
@@ -99,22 +129,23 @@ const Accounts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setLoading(true);
     try {
       if (editingId) {
         await apiClient.put(`/accounts/accounts/${editingId}/`, formData);
-        setSuccess('Account updated successfully');
+        showSuccessToast('Account updated successfully!');
       } else {
         await apiClient.post('/accounts/accounts/', formData);
-        setSuccess('Account created successfully');
+        showSuccessToast('Account created successfully!');
       }
       setShowForm(false);
       setEditingId(null);
       setFormData(initialFormData);
       fetchAccounts(pagination.page);
     } catch (err) {
-      setError('Failed to save account: ' + (err.response?.data?.detail || err.message));
+      const errorMsg = 'Failed to save account: ' + (err.response?.data?.detail || err.message);
+      setError(errorMsg);
+      showErrorToast(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -122,16 +153,17 @@ const Accounts = () => {
 
   const handleDelete = async (id) => {
     setError('');
-    setSuccess('');
     if (!window.confirm('Are you sure you want to delete this account?')) {
       return;
     }
     try {
       await apiClient.delete(`/accounts/accounts/${id}/`);
-      setSuccess('Account deleted successfully');
+      showSuccessToast('Account deleted successfully!');
       fetchAccounts(pagination.page);
     } catch (err) {
-      setError('Failed to delete account: ' + (err.response?.data?.detail || err.message));
+      const errorMsg = 'Failed to delete account: ' + (err.response?.data?.detail || err.message);
+      setError(errorMsg);
+      showErrorToast(errorMsg);
     }
   };
 
@@ -249,6 +281,29 @@ const Accounts = () => {
 
   return (
     <Container fluid>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
       <div className="page-header mb-4">
         <h1>
           <i className="fas fa-book me-2"></i>
@@ -261,7 +316,6 @@ const Accounts = () => {
       </div>
 
       {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
 
       {/* Filters and Search Bar */}
       <Card className="mb-4">
@@ -486,7 +540,7 @@ const Accounts = () => {
         </Card.Body>
       </Card>
 
-      {/* Create/Edit Modal */}
+      {/* Create/Edit Modal - Improved UI */}
       <Modal
         show={showForm}
         onHide={() => {
@@ -494,29 +548,42 @@ const Accounts = () => {
           setEditingId(null);
           setFormData(initialFormData);
         }}
+        size="lg"
+        centered
+        backdrop="static"
       >
-        <Modal.Header closeButton>
-          <Modal.Title>{editingId ? 'Edit Account' : 'Create Account'}</Modal.Title>
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title>
+            <i className={`fas ${editingId ? 'fa-edit' : 'fa-plus-circle'} me-2`}></i>
+            {editingId ? 'Edit Account' : 'Create Account'}
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           <Form onSubmit={handleSubmit}>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Account Number <span className="text-danger">*</span></Form.Label>
+                  <Form.Label className="fw-bold">Account Number <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     name="account_number"
                     value={formData.account_number}
                     onChange={handleChange}
                     placeholder="e.g., 1001"
                     required
+                    className="border-2"
                   />
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Account Type <span className="text-danger">*</span></Form.Label>
-                  <Form.Select name="account_type" value={formData.account_type} onChange={handleChange} required>
+                  <Form.Label className="fw-bold">Account Type <span className="text-danger">*</span></Form.Label>
+                  <Form.Select 
+                    name="account_type" 
+                    value={formData.account_type} 
+                    onChange={handleChange} 
+                    required
+                    className="border-2"
+                  >
                     <option value="asset">Asset</option>
                     <option value="liability">Liability</option>
                     <option value="equity">Equity</option>
@@ -527,17 +594,18 @@ const Accounts = () => {
               </Col>
             </Row>
             <Form.Group className="mb-3">
-              <Form.Label>Account Name <span className="text-danger">*</span></Form.Label>
+              <Form.Label className="fw-bold">Account Name <span className="text-danger">*</span></Form.Label>
               <Form.Control
                 name="account_name"
                 value={formData.account_name}
                 onChange={handleChange}
                 placeholder="e.g., Cash in Bank"
                 required
+                className="border-2"
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
+              <Form.Label className="fw-bold">Description</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
@@ -545,6 +613,7 @@ const Accounts = () => {
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="Description of the account"
+                className="border-2"
               />
             </Form.Group>
             <Form.Group className="mb-3">
@@ -553,10 +622,10 @@ const Accounts = () => {
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                label="Active Account"
+                label={<span className="fw-bold">Active Account</span>}
               />
             </Form.Group>
-            <div className="d-flex justify-content-end gap-2">
+            <div className="d-flex justify-content-end gap-2 mt-4">
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -564,14 +633,22 @@ const Accounts = () => {
                   setEditingId(null);
                   setFormData(initialFormData);
                 }}
+                size="lg"
               >
+                <i className="fas fa-times me-2"></i>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={loading}>
+              <Button type="submit" variant="primary" disabled={loading} size="lg">
                 {loading ? (
-                  <><Spinner animation="border" size="sm" className="me-2" />Saving...</>
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    {editingId ? 'Updating...' : 'Creating...'}
+                  </>
                 ) : (
-                  editingId ? 'Save Changes' : 'Create Account'
+                  <>
+                    <i className={`fas ${editingId ? 'fa-save' : 'fa-plus-circle'} me-2`}></i>
+                    {editingId ? 'Save Changes' : 'Create Account'}
+                  </>
                 )}
               </Button>
             </div>
@@ -579,35 +656,74 @@ const Accounts = () => {
         </Modal.Body>
       </Modal>
 
-      {/* View Modal */}
-      <Modal show={showView} onHide={() => setShowView(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Account Details</Modal.Title>
+      {/* View Modal - Improved UI */}
+      <Modal show={showView} onHide={() => setShowView(false)} size="lg" centered>
+        <Modal.Header closeButton className="bg-info text-white">
+          <Modal.Title>
+            <i className="fas fa-file-invoice me-2"></i>
+            Account Details
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           {viewItem && (
-            <div className="d-grid gap-2">
-              <div><strong>Account #:</strong> <span className="text-primary">{viewItem.account_number}</span></div>
-              <div><strong>Name:</strong> {viewItem.account_name}</div>
-              <div><strong>Type:</strong> {getAccountTypeBadge(viewItem.account_type)}</div>
-              <div><strong>Status:</strong> 
-                <Badge bg={viewItem.is_active ? 'success' : 'secondary'} className="ms-2">
-                  {viewItem.is_active ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-              <div><strong>Created:</strong> {formatDate(viewItem.created_at)}</div>
-              <div><strong>Last Updated:</strong> {formatDate(viewItem.updated_at)}</div>
-              {viewItem.description && (
-                <div className="mt-2">
-                  <strong>Description:</strong>
-                  <div className="border rounded p-2 mt-1 bg-light">
-                    {viewItem.description}
-                  </div>
-                </div>
-              )}
-            </div>
+            <Row>
+              <Col md={12}>
+                <Card className="shadow-sm">
+                  <Card.Body>
+                    <Row>
+                      <Col md={6}>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Account #:</span>
+                          <span className="badge bg-primary fs-6 p-2">{viewItem.account_number}</span>
+                        </div>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Name:</span>
+                          <span>{viewItem.account_name}</span>
+                        </div>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Type:</span>
+                          <span>{getAccountTypeBadge(viewItem.account_type)}</span>
+                        </div>
+                      </Col>
+                      <Col md={6}>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Status:</span>
+                          <span>
+                            <Badge bg={viewItem.is_active ? 'success' : 'secondary'} className="fs-6 p-2">
+                              {viewItem.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Created:</span>
+                          <span>{formatDate(viewItem.created_at)}</span>
+                        </div>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Last Updated:</span>
+                          <span>{formatDate(viewItem.updated_at)}</span>
+                        </div>
+                      </Col>
+                      {viewItem.description && (
+                        <Col md={12}>
+                          <div className="mt-3 p-3 bg-light rounded">
+                            <span className="fw-bold">Description:</span>
+                            <p className="mt-2 mb-0">{viewItem.description}</p>
+                          </div>
+                        </Col>
+                      )}
+                    </Row>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
           )}
         </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowView(false)} size="lg">
+            <i className="fas fa-times me-2"></i>
+            Close
+          </Button>
+        </Modal.Footer>
       </Modal>
     </Container>
   );

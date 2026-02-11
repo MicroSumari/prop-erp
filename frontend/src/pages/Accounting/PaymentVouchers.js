@@ -12,9 +12,11 @@ import {
   InputGroup,
   FormControl,
   Pagination,
-  Badge
+  Badge,
+  Spinner
 } from 'react-bootstrap';
 import apiClient from '../../services/api';
+import './PaymentVouchers.css'; // Create this CSS file
 
 const PaymentVouchers = () => {
   const [vouchers, setVouchers] = useState([]);
@@ -28,6 +30,14 @@ const PaymentVouchers = () => {
   const [showView, setShowView] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when forms should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,6 +69,36 @@ const PaymentVouchers = () => {
     description: '',
   };
   const [formData, setFormData] = useState(initialFormData);
+
+  // Toast functions
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+  };
 
   // Build query parameters for API
   const buildQueryParams = () => {
@@ -128,7 +168,7 @@ const PaymentVouchers = () => {
       setCurrentPage(1);
       const delayDebounceFn = setTimeout(() => {
         fetchData();
-      }, 500); // Debounce search by 500ms
+      }, 500);
 
       return () => clearTimeout(delayDebounceFn);
     }
@@ -146,6 +186,8 @@ const PaymentVouchers = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsFormDisabled(true);
+    
     try {
       const payload = {
         ...formData,
@@ -153,9 +195,10 @@ const PaymentVouchers = () => {
       };
       if (editingId) {
         await apiClient.put(`/purchase/payment-vouchers/${editingId}/`, payload);
-        setSuccess('Payment voucher updated');
+        showSuccessToast('Payment voucher updated successfully!');
       } else {
         await apiClient.post('/purchase/payment-vouchers/', payload);
+        showSuccessToast('Payment voucher created successfully!');
         setSuccess('Payment voucher created');
       }
       setShowForm(false);
@@ -163,7 +206,11 @@ const PaymentVouchers = () => {
       setFormData(initialFormData);
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save payment voucher');
+      const errorMsg = err.response?.data?.message || 'Failed to save payment voucher';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setIsFormDisabled(false);
     }
   };
 
@@ -231,6 +278,7 @@ const PaymentVouchers = () => {
   };
 
   const handleSort = (field) => {
+    if (isFormDisabled) return;
     const newSortField = sortField === field ? `-${field}` : field;
     setSortField(newSortField);
   };
@@ -305,7 +353,11 @@ const PaymentVouchers = () => {
     // First page
     if (startPage > 1) {
       items.push(
-        <Pagination.Item key={1} onClick={() => setCurrentPage(1)}>
+        <Pagination.Item 
+          key={1} 
+          onClick={() => setCurrentPage(1)}
+          disabled={isFormDisabled}
+        >
           1
         </Pagination.Item>
       );
@@ -321,6 +373,7 @@ const PaymentVouchers = () => {
           key={i}
           active={i === currentPage}
           onClick={() => setCurrentPage(i)}
+          disabled={isFormDisabled}
         >
           {i}
         </Pagination.Item>
@@ -336,6 +389,7 @@ const PaymentVouchers = () => {
         <Pagination.Item
           key={totalPages}
           onClick={() => setCurrentPage(totalPages)}
+          disabled={isFormDisabled}
         >
           {totalPages}
         </Pagination.Item>
@@ -347,12 +401,35 @@ const PaymentVouchers = () => {
 
   return (
     <Container fluid>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={isFormDisabled}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
       <div className="page-header mb-4">
         <h1>
           <i className="fas fa-hand-holding-usd me-2"></i>
           Payment Vouchers
         </h1>
-        <Button variant="primary" onClick={openCreate}>
+        <Button variant="primary" onClick={openCreate} disabled={isFormDisabled}>
           <i className="fas fa-plus me-2"></i>
           Add Payment Voucher
         </Button>
@@ -378,6 +455,7 @@ const PaymentVouchers = () => {
                   placeholder="Search by voucher number, supplier name..."
                   value={searchQuery}
                   onChange={handleSearchChange}
+                  disabled={isFormDisabled}
                 />
               </InputGroup>
             </Col>
@@ -385,6 +463,7 @@ const PaymentVouchers = () => {
               <Form.Select 
                 value={statusFilter} 
                 onChange={(e) => handleFilterChange('status', e.target.value)}
+                disabled={isFormDisabled}
               >
                 <option value="">All Statuses</option>
                 <option value="draft">Draft</option>
@@ -397,6 +476,7 @@ const PaymentVouchers = () => {
               <Form.Select 
                 value={paymentMethodFilter} 
                 onChange={(e) => handleFilterChange('payment_method', e.target.value)}
+                disabled={isFormDisabled}
               >
                 <option value="">All Methods</option>
                 <option value="cash">Cash</option>
@@ -405,7 +485,7 @@ const PaymentVouchers = () => {
               </Form.Select>
             </Col>
             <Col md={2}>
-              <Button variant="outline-secondary" onClick={clearFilters}>
+              <Button variant="outline-secondary" onClick={clearFilters} disabled={isFormDisabled}>
                 <i className="fas fa-times me-2"></i>
                 Clear Filters
               </Button>
@@ -419,6 +499,7 @@ const PaymentVouchers = () => {
                   type="date"
                   value={dateFromFilter}
                   onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                  disabled={isFormDisabled}
                 />
               </Form.Group>
             </Col>
@@ -429,6 +510,7 @@ const PaymentVouchers = () => {
                   type="date"
                   value={dateToFilter}
                   onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                  disabled={isFormDisabled}
                 />
               </Form.Group>
             </Col>
@@ -458,32 +540,32 @@ const PaymentVouchers = () => {
               <thead>
                 <tr>
                   <th 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('voucher_number')}
+                    style={{ cursor: isFormDisabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !isFormDisabled && handleSort('voucher_number')}
                   >
                     Voucher #
                     {sortField === 'voucher_number' && <i className="fas fa-sort-up ms-1"></i>}
                     {sortField === '-voucher_number' && <i className="fas fa-sort-down ms-1"></i>}
                   </th>
                   <th 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('supplier__first_name')}
+                    style={{ cursor: isFormDisabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !isFormDisabled && handleSort('supplier__first_name')}
                   >
                     Supplier
                     {sortField === 'supplier__first_name' && <i className="fas fa-sort-up ms-1"></i>}
                     {sortField === '-supplier__first_name' && <i className="fas fa-sort-down ms-1"></i>}
                   </th>
                   <th 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('payment_date')}
+                    style={{ cursor: isFormDisabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !isFormDisabled && handleSort('payment_date')}
                   >
                     Date
                     {sortField === 'payment_date' && <i className="fas fa-sort-up ms-1"></i>}
                     {sortField === '-payment_date' && <i className="fas fa-sort-down ms-1"></i>}
                   </th>
                   <th 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('amount')}
+                    style={{ cursor: isFormDisabled ? 'not-allowed' : 'pointer' }}
+                    onClick={() => !isFormDisabled && handleSort('amount')}
                   >
                     Amount
                     {sortField === 'amount' && <i className="fas fa-sort-up ms-1"></i>}
@@ -515,6 +597,7 @@ const PaymentVouchers = () => {
                           className="me-2"
                           onClick={() => openView(v)}
                           title="View voucher"
+                          disabled={isFormDisabled}
                         >
                           <i className="fas fa-eye"></i>
                         </Button>
@@ -524,7 +607,7 @@ const PaymentVouchers = () => {
                           className="me-2"
                           onClick={() => openEdit(v)}
                           title="Edit voucher"
-                          disabled={v.status === 'cleared' || v.status === 'cancelled'}
+                          disabled={v.status === 'cleared' || v.status === 'cancelled' || isFormDisabled}
                         >
                           <i className="fas fa-edit"></i>
                         </Button>
@@ -555,20 +638,20 @@ const PaymentVouchers = () => {
               <Pagination>
                 <Pagination.First 
                   onClick={() => setCurrentPage(1)} 
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isFormDisabled}
                 />
                 <Pagination.Prev 
                   onClick={() => setCurrentPage(currentPage - 1)} 
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isFormDisabled}
                 />
                 {renderPaginationItems()}
                 <Pagination.Next 
                   onClick={() => setCurrentPage(currentPage + 1)} 
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || isFormDisabled}
                 />
                 <Pagination.Last 
                   onClick={() => setCurrentPage(totalPages)} 
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || isFormDisabled}
                 />
               </Pagination>
             </div>
@@ -577,221 +660,384 @@ const PaymentVouchers = () => {
       </Card>
 
       {/* Create/Edit Modal */}
-      <Modal
-        show={showForm}
-        onHide={() => {
-          setShowForm(false);
-          setEditingId(null);
-          setFormData(initialFormData);
-        }}
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>{editingId ? 'Edit Payment Voucher' : 'Create Payment Voucher'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSubmit}>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Supplier *</Form.Label>
-                  <Form.Select name="supplier" value={formData.supplier} onChange={handleChange} required>
-                    <option value="">Select supplier</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.first_name} {s.last_name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Supplier Invoice</Form.Label>
-                  <Form.Select name="supplier_invoice" value={formData.supplier_invoice} onChange={handleChange}>
-                    <option value="">Select invoice</option>
-                    {supplierInvoices.map((inv) => (
-                      <option key={inv.id} value={inv.id}>{inv.invoice_number}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Payment Date *</Form.Label>
-                  <Form.Control type="date" name="payment_date" value={formData.payment_date} onChange={handleChange} required />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Amount *</Form.Label>
-                  <Form.Control type="number" step="0.01" name="amount" value={formData.amount} onChange={handleChange} required />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Payment Method *</Form.Label>
-                  <Form.Select name="payment_method" value={formData.payment_method} onChange={handleChange} required>
-                    <option value="cash">Cash</option>
-                    <option value="bank">Bank Transfer</option>
-                    <option value="cheque">Cheque</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Status *</Form.Label>
-                  <Form.Select name="status" value={formData.status} onChange={handleChange} required>
-                    <option value="draft">Draft</option>
-                    <option value="submitted">Submitted</option>
-                    <option value="cleared">Cleared</option>
-                    <option value="cancelled">Cancelled</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Cash Account</Form.Label>
-                  <Form.Select name="cash_account" value={formData.cash_account} onChange={handleChange}>
-                    <option value="">Select account</option>
-                    {accounts.filter((a) => a.account_type === 'asset').map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Bank Account</Form.Label>
-                  <Form.Select name="bank_account" value={formData.bank_account} onChange={handleChange}>
-                    <option value="">Select account</option>
-                    {accounts.filter((a) => a.account_type === 'asset').map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Cheques Issued Account</Form.Label>
-                  <Form.Select name="cheques_issued_account" value={formData.cheques_issued_account} onChange={handleChange}>
-                    <option value="">Select account</option>
-                    {accounts.filter((a) => a.account_type === 'liability').map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Supplier Account *</Form.Label>
-                  <Form.Select name="supplier_account" value={formData.supplier_account} onChange={handleChange} required>
-                    <option value="">Select account</option>
-                    {accounts.filter((a) => a.account_type === 'liability').map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Cost Center</Form.Label>
-                  <Form.Select name="cost_center" value={formData.cost_center} onChange={handleChange}>
-                    <option value="">Select cost center</option>
-                    {costCenters.map((c) => (
-                      <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Description</Form.Label>
-                  <Form.Control 
-                    as="textarea" 
-                    rows={1} 
-                    name="description" 
-                    value={formData.description} 
-                    onChange={handleChange}
-                    placeholder="Optional description"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <div className="d-flex justify-content-end gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                  setFormData(initialFormData);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary">
-                {editingId ? 'Save Changes' : 'Create Voucher'}
-              </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
+     {/* Create/Edit Modal - Improved UI */}
+<Modal
+  show={showForm}
+  onHide={() => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData(initialFormData);
+  }}
+  size="lg"
+  centered
+  backdrop="static"
+>
+  <Modal.Header closeButton className="bg-primary text-white">
+    <Modal.Title>
+      <i className={`fas ${editingId ? 'fa-edit' : 'fa-plus-circle'} me-2`}></i>
+      {editingId ? 'Edit Payment Voucher' : 'Create Payment Voucher'}
+    </Modal.Title>
+  </Modal.Header>
+  <Modal.Body className="p-4">
+    <Form onSubmit={handleSubmit}>
+      <Row>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Supplier <span className="text-danger">*</span></Form.Label>
+            <Form.Select 
+              name="supplier" 
+              value={formData.supplier} 
+              onChange={handleChange} 
+              required
+              disabled={isFormDisabled}
+              className="border-2"
+            >
+              <option value="">-- Select Supplier --</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.first_name} {s.last_name}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Supplier Invoice</Form.Label>
+            <Form.Select 
+              name="supplier_invoice" 
+              value={formData.supplier_invoice} 
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className="border-2"
+            >
+              <option value="">-- Select Invoice --</option>
+              {supplierInvoices.map((inv) => (
+                <option key={inv.id} value={inv.id}>{inv.invoice_number}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Payment Date <span className="text-danger">*</span></Form.Label>
+            <Form.Control 
+              type="date" 
+              name="payment_date" 
+              value={formData.payment_date} 
+              onChange={handleChange} 
+              required 
+              disabled={isFormDisabled}
+              className="border-2"
+            />
+          </Form.Group>
+        </Col>
+      </Row>
 
-      {/* View Modal */}
-      <Modal show={showView} onHide={() => setShowView(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Payment Voucher Details</Modal.Title>
+      <Row>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Amount <span className="text-danger">*</span></Form.Label>
+            <Form.Control 
+              type="number" 
+              step="0.01" 
+              name="amount" 
+              value={formData.amount} 
+              onChange={handleChange} 
+              required 
+              disabled={isFormDisabled}
+              className="border-2"
+              placeholder="0.00"
+            />
+          </Form.Group>
+        </Col>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Payment Method <span className="text-danger">*</span></Form.Label>
+            <Form.Select 
+              name="payment_method" 
+              value={formData.payment_method} 
+              onChange={handleChange} 
+              required
+              disabled={isFormDisabled}
+              className="border-2"
+            >
+              <option value="cash">Cash</option>
+              <option value="bank">Bank Transfer</option>
+              <option value="cheque">Cheque</option>
+            </Form.Select>
+          </Form.Group>
+        </Col>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Status <span className="text-danger">*</span></Form.Label>
+            <Form.Select 
+              name="status" 
+              value={formData.status} 
+              onChange={handleChange} 
+              required
+              disabled={isFormDisabled}
+              className="border-2"
+            >
+              <option value="draft">Draft</option>
+              <option value="submitted">Submitted</option>
+              <option value="cleared">Cleared</option>
+              <option value="cancelled">Cancelled</option>
+            </Form.Select>
+          </Form.Group>
+        </Col>
+      </Row>
+
+      <Card className="bg-light mb-3">
+        <Card.Header className="bg-secondary text-white">
+          <i className="fas fa-warehouse me-2"></i>
+          Accounting Configuration
+        </Card.Header>
+        <Card.Body>
+          <Row>
+            <Col md={4}>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">Cash Account</Form.Label>
+                <Form.Select 
+                  name="cash_account" 
+                  value={formData.cash_account} 
+                  onChange={handleChange}
+                  disabled={isFormDisabled}
+                  className="border-2"
+                >
+                  <option value="">-- Select Account --</option>
+                  {accounts.filter((a) => a.account_type === 'asset').map((a) => (
+                    <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">Bank Account</Form.Label>
+                <Form.Select 
+                  name="bank_account" 
+                  value={formData.bank_account} 
+                  onChange={handleChange}
+                  disabled={isFormDisabled}
+                  className="border-2"
+                >
+                  <option value="">-- Select Account --</option>
+                  {accounts.filter((a) => a.account_type === 'asset').map((a) => (
+                    <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">Cheques Issued Account</Form.Label>
+                <Form.Select 
+                  name="cheques_issued_account" 
+                  value={formData.cheques_issued_account} 
+                  onChange={handleChange}
+                  disabled={isFormDisabled}
+                  className="border-2"
+                >
+                  <option value="">-- Select Account --</option>
+                  {accounts.filter((a) => a.account_type === 'liability').map((a) => (
+                    <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+          </Row>
+          <Row>
+            <Col md={4}>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">Supplier Account <span className="text-danger">*</span></Form.Label>
+                <Form.Select 
+                  name="supplier_account" 
+                  value={formData.supplier_account} 
+                  onChange={handleChange} 
+                  required
+                  disabled={isFormDisabled}
+                  className="border-2"
+                >
+                  <option value="">-- Select Account --</option>
+                  {accounts.filter((a) => a.account_type === 'liability').map((a) => (
+                    <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">Cost Center</Form.Label>
+                <Form.Select 
+                  name="cost_center" 
+                  value={formData.cost_center} 
+                  onChange={handleChange}
+                  disabled={isFormDisabled}
+                  className="border-2"
+                >
+                  <option value="">-- Select Cost Center --</option>
+                  {costCenters.map((c) => (
+                    <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">Description</Form.Label>
+                <Form.Control 
+                  as="textarea" 
+                  rows={3} 
+                  name="description" 
+                  value={formData.description} 
+                  onChange={handleChange}
+                  placeholder="Optional description"
+                  disabled={isFormDisabled}
+                  className="border-2"
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+
+      <div className="d-flex justify-content-end gap-2 mt-4">
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setShowForm(false);
+            setEditingId(null);
+            setFormData(initialFormData);
+          }}
+          disabled={isFormDisabled}
+          size="lg"
+        >
+          <i className="fas fa-times me-2"></i>
+          Cancel
+        </Button>
+        <Button type="submit" variant="primary" disabled={isFormDisabled} size="lg">
+          {isFormDisabled ? (
+            <>
+              <Spinner as="span" animation="border" size="sm" className="me-2" />
+              {editingId ? 'Updating...' : 'Creating...'}
+            </>
+          ) : (
+            <>
+              <i className={`fas ${editingId ? 'fa-save' : 'fa-plus-circle'} me-2`}></i>
+              {editingId ? 'Save Changes' : 'Create Voucher'}
+            </>
+          )}
+        </Button>
+      </div>
+    </Form>
+  </Modal.Body>
+</Modal>
+
+      {/* View Modal - Improved UI */}
+      <Modal show={showView} onHide={() => setShowView(false)} size="lg" centered>
+        <Modal.Header closeButton className="bg-info text-white">
+          <Modal.Title>
+            <i className="fas fa-file-invoice me-2"></i>
+            Payment Voucher Details
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           {viewItem && (
             <Row>
               <Col md={6}>
-                <Card className="mb-3">
-                  <Card.Header>Basic Information</Card.Header>
+                <Card className="mb-3 shadow-sm">
+                  <Card.Header className="bg-light fw-bold">
+                    <i className="fas fa-info-circle me-2"></i>
+                    Basic Information
+                  </Card.Header>
                   <Card.Body>
                     <div className="d-grid gap-2">
-                      <div><strong>Voucher #:</strong> {viewItem.voucher_number}</div>
-                      <div><strong>Supplier:</strong> {resolveSupplierName(viewItem.supplier)}</div>
-                      <div><strong>Supplier Invoice:</strong> {resolveInvoiceNumber(viewItem.supplier_invoice)}</div>
-                      <div><strong>Payment Date:</strong> {viewItem.payment_date}</div>
-                      <div><strong>Amount:</strong> ${parseFloat(viewItem.amount).toFixed(2)}</div>
-                      <div><strong>Payment Method:</strong> {getPaymentMethodBadge(viewItem.payment_method)}</div>
-                      <div><strong>Status:</strong> {getStatusBadge(viewItem.status)}</div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Voucher #:</span>
+                        <span className="badge bg-secondary fs-6 p-2">{viewItem.voucher_number}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Supplier:</span>
+                        <span>{resolveSupplierName(viewItem.supplier)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Supplier Invoice:</span>
+                        <span className="text-primary">{resolveInvoiceNumber(viewItem.supplier_invoice)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Payment Date:</span>
+                        <span>{viewItem.payment_date}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Amount:</span>
+                        <span className="text-success fw-bold">${parseFloat(viewItem.amount).toFixed(2)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Payment Method:</span>
+                        <span>{getPaymentMethodBadge(viewItem.payment_method)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between pb-2">
+                        <span className="fw-bold">Status:</span>
+                        <span>{getStatusBadge(viewItem.status)}</span>
+                      </div>
                     </div>
                   </Card.Body>
                 </Card>
               </Col>
               <Col md={6}>
-                <Card className="mb-3">
-                  <Card.Header>Accounting Details</Card.Header>
+                <Card className="mb-3 shadow-sm">
+                  <Card.Header className="bg-light fw-bold">
+                    <i className="fas fa-warehouse me-2"></i>
+                    Accounting Details
+                  </Card.Header>
                   <Card.Body>
                     <div className="d-grid gap-2">
-                      <div><strong>Cash Account:</strong> {resolveAccountName(viewItem.cash_account)}</div>
-                      <div><strong>Bank Account:</strong> {resolveAccountName(viewItem.bank_account)}</div>
-                      <div><strong>Cheques Issued Account:</strong> {resolveAccountName(viewItem.cheques_issued_account)}</div>
-                      <div><strong>Supplier Account:</strong> {resolveAccountName(viewItem.supplier_account)}</div>
-                      <div><strong>Cost Center:</strong> {resolveCostCenter(viewItem.cost_center)}</div>
-                      {viewItem.description && (
-                        <div className="mt-2">
-                          <strong>Description:</strong>
-                          <p className="mt-1">{viewItem.description}</p>
-                        </div>
-                      )}
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Cash Account:</span>
+                        <span className="text-primary">{resolveAccountName(viewItem.cash_account)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Bank Account:</span>
+                        <span className="text-primary">{resolveAccountName(viewItem.bank_account)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Cheques Issued Account:</span>
+                        <span className="text-primary">{resolveAccountName(viewItem.cheques_issued_account)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Supplier Account:</span>
+                        <span className="text-primary">{resolveAccountName(viewItem.supplier_account)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between pb-2">
+                        <span className="fw-bold">Cost Center:</span>
+                        <span className="text-primary">{resolveCostCenter(viewItem.cost_center)}</span>
+                      </div>
                     </div>
                   </Card.Body>
                 </Card>
               </Col>
+              {viewItem.description && (
+                <Col md={12}>
+                  <Card className="shadow-sm">
+                    <Card.Header className="bg-light fw-bold">
+                      <i className="fas fa-align-left me-2"></i>
+                      Description
+                    </Card.Header>
+                    <Card.Body>
+                      <div className="bg-light p-3 rounded">
+                        <p className="mb-0">{viewItem.description}</p>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              )}
             </Row>
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowView(false)}>
+          <Button variant="secondary" onClick={() => setShowView(false)} disabled={isFormDisabled} size="lg">
+            <i className="fas fa-times me-2"></i>
             Close
           </Button>
         </Modal.Footer>

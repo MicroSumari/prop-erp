@@ -351,7 +351,7 @@ const ReceiptVoucher = () => {
   };
 
   return (
-    <Container className="mt-4">
+    <Container fluid className="mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <div className="page-header mb-4">
@@ -359,19 +359,18 @@ const ReceiptVoucher = () => {
           </div>
           <p className="text-muted">Manage tenant payments (Cash / Bank / Cheque)</p>
         </div>
-      </div>
+        {error && <Alert variant="danger">{error}</Alert>}
+        {success && <Alert variant="success">{success}</Alert>}
 
-      {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
-
-      <div className="mb-4">
-        <Button 
-          variant="primary"
-          onClick={() => navigate('/receipt-vouchers/new')}
-        >
-          <i className="fas fa-plus me-2"></i>
-          New Receipt Voucher
-        </Button>
+        <div className="mb-4">
+          <Button 
+            variant="primary"
+            onClick={() => navigate('/receipt-vouchers/new')}
+          >
+            <i className="fas fa-plus me-2"></i>
+            New Receipt Voucher
+          </Button>
+        </div>
       </div>
 
       {/* Filters and Search Bar */}
@@ -730,7 +729,7 @@ const ReceiptVoucher = () => {
                             <Button 
                               size="sm"
                               variant="warning"
-                              onClick={() => handleEdit(receipt)}
+                              onClick={() => navigate(`/receipt-vouchers/edit/${receipt.id}`)}
                               className="me-2"
                               title="Edit receipt"
                             >

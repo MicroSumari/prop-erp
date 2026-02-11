@@ -176,6 +176,165 @@
   font-size: 1rem;
 }
 
+
+/* Toast styles - same as LeaseForm.css */
+.custom-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  min-width: 350px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  transform: translateX(400px);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 9999;
+}
+
+.custom-toast.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.custom-toast .toast-content {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  gap: 12px;
+}
+
+.custom-toast .toast-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.custom-toast.success .toast-icon {
+  color: #28a745;
+  animation: successPulse 0.6s ease;
+}
+
+.custom-toast.danger .toast-icon {
+  color: #dc3545;
+  animation: errorShake 0.5s ease;
+}
+
+.custom-toast .toast-message {
+  flex: 1;
+}
+
+.custom-toast .toast-title {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.custom-toast .toast-text {
+  font-size: 14px;
+  color: #666;
+}
+
+.custom-toast .toast-close {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.custom-toast .toast-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.custom-toast .toast-progress {
+  height: 4px;
+  background: linear-gradient(90deg, transparent, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.custom-toast.success .toast-progress {
+  background: #e8f5e9;
+}
+
+.custom-toast.danger .toast-progress {
+  background: #ffebee;
+}
+
+.custom-toast .toast-progress::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  animation: progress 3s linear forwards;
+}
+
+.custom-toast.success .toast-progress::before {
+  background: #28a745;
+}
+
+.custom-toast.danger .toast-progress::before {
+  background: #dc3545;
+}
+
+@keyframes progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes successPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes errorShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
+}
+
+/* Form disabled state */
+.property-form-card.form-disabled {
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .custom-toast {
+    min-width: 90%;
+    right: 5%;
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .property-form-container {

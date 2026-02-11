@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, Tab, Card, Table, Button, Modal, Form, Row, Col, Alert, Container } from 'react-bootstrap';
+import { Tabs, Tab, Card, Table, Button, Modal, Form, Row, Col, Alert, Container, Spinner } from 'react-bootstrap';
 import apiClient from '../../services/api';
+import './SystemConfig.css'; // Create this CSS file
 
 const SystemConfig = () => {
   const [accounts, setAccounts] = useState([]);
@@ -9,7 +10,11 @@ const SystemConfig = () => {
   const [propertyClasses, setPropertyClasses] = useState([]);
   const [receiptPaymentMappings, setReceiptPaymentMappings] = useState([]);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
 
   const [showTxForm, setShowTxForm] = useState(false);
   const [showPropForm, setShowPropForm] = useState(false);
@@ -18,6 +23,8 @@ const SystemConfig = () => {
   const [txEditingId, setTxEditingId] = useState(null);
   const [propEditingId, setPropEditingId] = useState(null);
   const [rpEditingId, setRpEditingId] = useState(null);
+  
+  const [loading, setLoading] = useState(false);
 
   const txInitial = {
     transaction_type: 'lease_creation',
@@ -51,6 +58,31 @@ const SystemConfig = () => {
   const [txForm, setTxForm] = useState(txInitial);
   const [propForm, setPropForm] = useState(propInitial);
   const [rpForm, setRpForm] = useState(rpInitial);
+
+  // Toast functions
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+  };
 
   const normalizeList = (data) => (Array.isArray(data) ? data : (data?.results || []));
 
@@ -90,21 +122,25 @@ const SystemConfig = () => {
   const handleTxSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
+    setLoading(true);
     try {
       if (txEditingId) {
         await apiClient.put(`/accounts/transaction-mappings/${txEditingId}/`, txForm);
-        setSuccess('Transaction mapping updated');
+        showSuccessToast('Transaction mapping updated successfully!');
       } else {
         await apiClient.post('/accounts/transaction-mappings/', txForm);
-        setSuccess('Transaction mapping created');
+        showSuccessToast('Transaction mapping created successfully!');
       }
       setShowTxForm(false);
       setTxEditingId(null);
       setTxForm(txInitial);
       fetchData();
     } catch (err) {
-      setError('Failed to save transaction mapping');
+      const errorMsg = 'Failed to save transaction mapping';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -125,21 +161,25 @@ const SystemConfig = () => {
   const handlePropSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
+    setLoading(true);
     try {
       if (propEditingId) {
         await apiClient.put(`/accounts/property-classifications/${propEditingId}/`, propForm);
-        setSuccess('Property classification updated');
+        showSuccessToast('Property classification updated successfully!');
       } else {
         await apiClient.post('/accounts/property-classifications/', propForm);
-        setSuccess('Property classification created');
+        showSuccessToast('Property classification created successfully!');
       }
       setShowPropForm(false);
       setPropEditingId(null);
       setPropForm(propInitial);
       fetchData();
     } catch (err) {
-      setError('Failed to save property classification');
+      const errorMsg = 'Failed to save property classification';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -158,21 +198,25 @@ const SystemConfig = () => {
   const handleRpSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
+    setLoading(true);
     try {
       if (rpEditingId) {
         await apiClient.put(`/accounts/receipt-payment-mappings/${rpEditingId}/`, rpForm);
-        setSuccess('Receipt/payment mapping updated');
+        showSuccessToast('Receipt/payment mapping updated successfully!');
       } else {
         await apiClient.post('/accounts/receipt-payment-mappings/', rpForm);
-        setSuccess('Receipt/payment mapping created');
+        showSuccessToast('Receipt/payment mapping created successfully!');
       }
       setShowRpForm(false);
       setRpEditingId(null);
       setRpForm(rpInitial);
       fetchData();
     } catch (err) {
-      setError('Failed to save receipt/payment mapping');
+      const errorMsg = 'Failed to save receipt/payment mapping';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -193,6 +237,29 @@ const SystemConfig = () => {
 
   return (
     <Container fluid>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
       <div className="page-header mb-4">
         <h1>
           <i className="fas fa-sliders-h me-2"></i>
@@ -201,7 +268,6 @@ const SystemConfig = () => {
       </div>
 
       {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
 
       <Tabs defaultActiveKey="transactions" className="mb-3">
         <Tab eventKey="transactions" title="Transaction Account Mapping">
@@ -384,18 +450,29 @@ const SystemConfig = () => {
         </Tab>
       </Tabs>
 
-      <Modal show={showTxForm} onHide={() => setShowTxForm(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{txEditingId ? 'Edit' : 'Add'} Transaction Mapping</Modal.Title>
+      {/* Transaction Mapping Modal - Improved UI */}
+      <Modal 
+        show={showTxForm} 
+        onHide={() => setShowTxForm(false)} 
+        size="lg" 
+        centered 
+        backdrop="static"
+      >
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title>
+            <i className={`fas ${txEditingId ? 'fa-edit' : 'fa-plus-circle'} me-2`}></i>
+            {txEditingId ? 'Edit' : 'Add'} Transaction Mapping
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           <Form onSubmit={handleTxSubmit}>
             <Form.Group className="mb-3">
-              <Form.Label>Transaction Type</Form.Label>
+              <Form.Label className="fw-bold">Transaction Type</Form.Label>
               <Form.Select
                 value={txForm.transaction_type}
                 onChange={(e) => setTxForm({ ...txForm, transaction_type: e.target.value })}
                 required
+                className="border-2"
               >
                 <option value="lease_creation">Lease Creation</option>
                 <option value="receipt_voucher">Receipt Voucher</option>
@@ -406,191 +483,297 @@ const SystemConfig = () => {
                 <option value="maintenance_request">Maintenance Request</option>
               </Form.Select>
             </Form.Group>
-            <Row>
-              <Col md={6}>
+
+            <Card className="bg-light mb-3">
+              <Card.Header className="bg-secondary text-white">
+                <i className="fas fa-exchange-alt me-2"></i>
+                Account Mapping
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Debit Account</Form.Label>
+                      <Form.Select
+                        value={txForm.debit_account}
+                        onChange={(e) => setTxForm({ ...txForm, debit_account: e.target.value })}
+                        required
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Credit Account</Form.Label>
+                      <Form.Select
+                        value={txForm.credit_account}
+                        onChange={(e) => setTxForm({ ...txForm, credit_account: e.target.value })}
+                        required
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+
+            <Card className="bg-light mb-3">
+              <Card.Header className="bg-secondary text-white">
+                <i className="fas fa-cog me-2"></i>
+                Additional Configuration
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Cost Center</Form.Label>
+                      <Form.Select
+                        value={txForm.cost_center}
+                        onChange={(e) => setTxForm({ ...txForm, cost_center: e.target.value })}
+                        className="border-2"
+                      >
+                        <option value="">-- Select Cost Center --</option>
+                        {costCenters.map((c) => (
+                          <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Tax Account</Form.Label>
+                      <Form.Select
+                        value={txForm.tax_account}
+                        onChange={(e) => setTxForm({ ...txForm, tax_account: e.target.value })}
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
                 <Form.Group className="mb-3">
-                  <Form.Label>Debit Account</Form.Label>
+                  <Form.Label className="fw-bold">Bank/Cash Account</Form.Label>
                   <Form.Select
-                    value={txForm.debit_account}
-                    onChange={(e) => setTxForm({ ...txForm, debit_account: e.target.value })}
-                    required
+                    value={txForm.bank_account}
+                    onChange={(e) => setTxForm({ ...txForm, bank_account: e.target.value })}
+                    className="border-2"
                   >
-                    <option value="">Select account</option>
+                    <option value="">-- Select Account --</option>
                     {accounts.map((a) => (
                       <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
                     ))}
                   </Form.Select>
                 </Form.Group>
-              </Col>
-              <Col md={6}>
+              </Card.Body>
+            </Card>
+
+            <Form.Check
+              className="mb-3"
+              type="checkbox"
+              id="tx-active"
+              label={<span className="fw-bold">Active</span>}
+              checked={txForm.is_active}
+              onChange={(e) => setTxForm({ ...txForm, is_active: e.target.checked })}
+            />
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <Button 
+                variant="secondary" 
+                onClick={() => setShowTxForm(false)}
+                size="lg"
+                disabled={loading}
+              >
+                <i className="fas fa-times me-2"></i>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="lg" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className={`fas ${txEditingId ? 'fa-save' : 'fa-plus-circle'} me-2`}></i>
+                    {txEditingId ? 'Save Changes' : 'Create Mapping'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+
+      {/* Property Classification Modal - Improved UI */}
+      <Modal 
+        show={showPropForm} 
+        onHide={() => setShowPropForm(false)} 
+        size="lg" 
+        centered 
+        backdrop="static"
+      >
+        <Modal.Header closeButton className="bg-success text-white">
+          <Modal.Title>
+            <i className={`fas ${propEditingId ? 'fa-edit' : 'fa-plus-circle'} me-2`}></i>
+            {propEditingId ? 'Edit' : 'Add'} Property Classification
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <Form onSubmit={handlePropSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold">Name</Form.Label>
+              <Form.Control
+                value={propForm.name}
+                onChange={(e) => setPropForm({ ...propForm, name: e.target.value })}
+                required
+                className="border-2"
+                placeholder="Enter classification name"
+              />
+            </Form.Group>
+
+            <Card className="bg-light mb-3">
+              <Card.Header className="bg-secondary text-white">
+                <i className="fas fa-warehouse me-2"></i>
+                Default Accounts
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Revenue Account</Form.Label>
+                      <Form.Select
+                        value={propForm.default_revenue_account}
+                        onChange={(e) => setPropForm({ ...propForm, default_revenue_account: e.target.value })}
+                        required
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Expense Account</Form.Label>
+                      <Form.Select
+                        value={propForm.default_expense_account}
+                        onChange={(e) => setPropForm({ ...propForm, default_expense_account: e.target.value })}
+                        required
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
                 <Form.Group className="mb-3">
-                  <Form.Label>Credit Account</Form.Label>
+                  <Form.Label className="fw-bold">Default Cost Center</Form.Label>
                   <Form.Select
-                    value={txForm.credit_account}
-                    onChange={(e) => setTxForm({ ...txForm, credit_account: e.target.value })}
-                    required
+                    value={propForm.default_cost_center}
+                    onChange={(e) => setPropForm({ ...propForm, default_cost_center: e.target.value })}
+                    className="border-2"
                   >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Cost Center</Form.Label>
-                  <Form.Select
-                    value={txForm.cost_center}
-                    onChange={(e) => setTxForm({ ...txForm, cost_center: e.target.value })}
-                  >
-                    <option value="">Select cost center</option>
+                    <option value="">-- Select Cost Center --</option>
                     {costCenters.map((c) => (
                       <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                     ))}
                   </Form.Select>
                 </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Tax Account</Form.Label>
-                  <Form.Select
-                    value={txForm.tax_account}
-                    onChange={(e) => setTxForm({ ...txForm, tax_account: e.target.value })}
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Group className="mb-3">
-              <Form.Label>Bank/Cash Account</Form.Label>
-              <Form.Select
-                value={txForm.bank_account}
-                onChange={(e) => setTxForm({ ...txForm, bank_account: e.target.value })}
-              >
-                <option value="">Select account</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-            <Form.Check
-              className="mb-3"
-              type="checkbox"
-              label="Active"
-              checked={txForm.is_active}
-              onChange={(e) => setTxForm({ ...txForm, is_active: e.target.checked })}
-            />
-            <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={() => setShowTxForm(false)}>Cancel</Button>
-              <Button type="submit">Save</Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
+              </Card.Body>
+            </Card>
 
-      <Modal show={showPropForm} onHide={() => setShowPropForm(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{propEditingId ? 'Edit' : 'Add'} Property Classification</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handlePropSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
-              <Form.Control
-                value={propForm.name}
-                onChange={(e) => setPropForm({ ...propForm, name: e.target.value })}
-                required
-              />
-            </Form.Group>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Default Revenue Account</Form.Label>
-                  <Form.Select
-                    value={propForm.default_revenue_account}
-                    onChange={(e) => setPropForm({ ...propForm, default_revenue_account: e.target.value })}
-                    required
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Default Expense Account</Form.Label>
-                  <Form.Select
-                    value={propForm.default_expense_account}
-                    onChange={(e) => setPropForm({ ...propForm, default_expense_account: e.target.value })}
-                    required
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Group className="mb-3">
-              <Form.Label>Default Cost Center</Form.Label>
-              <Form.Select
-                value={propForm.default_cost_center}
-                onChange={(e) => setPropForm({ ...propForm, default_cost_center: e.target.value })}
-              >
-                <option value="">Select cost center</option>
-                {costCenters.map((c) => (
-                  <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
-                ))}
-              </Form.Select>
-            </Form.Group>
             <Form.Check
               className="mb-3"
               type="checkbox"
-              label="Active"
+              id="prop-active"
+              label={<span className="fw-bold">Active</span>}
               checked={propForm.is_active}
               onChange={(e) => setPropForm({ ...propForm, is_active: e.target.checked })}
             />
-            <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={() => setShowPropForm(false)}>Cancel</Button>
-              <Button type="submit">Save</Button>
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <Button 
+                variant="secondary" 
+                onClick={() => setShowPropForm(false)}
+                size="lg"
+                disabled={loading}
+              >
+                <i className="fas fa-times me-2"></i>
+                Cancel
+              </Button>
+              <Button type="submit" variant="success" size="lg" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className={`fas ${propEditingId ? 'fa-save' : 'fa-plus-circle'} me-2`}></i>
+                    {propEditingId ? 'Save Changes' : 'Create Classification'}
+                  </>
+                )}
+              </Button>
             </div>
           </Form>
         </Modal.Body>
       </Modal>
 
-      <Modal show={showRpForm} onHide={() => setShowRpForm(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{rpEditingId ? 'Edit' : 'Add'} Receipt/Payment Mapping</Modal.Title>
+      {/* Receipt/Payment Mapping Modal - Improved UI */}
+      <Modal 
+        show={showRpForm} 
+        onHide={() => setShowRpForm(false)} 
+        size="lg" 
+        centered 
+        backdrop="static"
+      >
+        <Modal.Header closeButton className="bg-info text-white">
+          <Modal.Title>
+            <i className={`fas ${rpEditingId ? 'fa-edit' : 'fa-plus-circle'} me-2`}></i>
+            {rpEditingId ? 'Edit' : 'Add'} Receipt/Payment Mapping
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           <Form onSubmit={handleRpSubmit}>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Name</Form.Label>
+                  <Form.Label className="fw-bold">Name</Form.Label>
                   <Form.Control
                     value={rpForm.name}
                     onChange={(e) => setRpForm({ ...rpForm, name: e.target.value })}
                     required
+                    className="border-2"
+                    placeholder="Enter mapping name"
                   />
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Type</Form.Label>
+                  <Form.Label className="fw-bold">Type</Form.Label>
                   <Form.Select
                     value={rpForm.mapping_type}
                     onChange={(e) => setRpForm({ ...rpForm, mapping_type: e.target.value })}
+                    className="border-2"
                   >
                     <option value="receipt">Receipt</option>
                     <option value="payment">Payment</option>
@@ -598,85 +781,137 @@ const SystemConfig = () => {
                 </Form.Group>
               </Col>
             </Row>
+
+            <Card className="bg-light mb-3">
+              <Card.Header className="bg-secondary text-white">
+                <i className="fas fa-exchange-alt me-2"></i>
+                Account Mapping
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Debit Account</Form.Label>
+                      <Form.Select
+                        value={rpForm.debit_account}
+                        onChange={(e) => setRpForm({ ...rpForm, debit_account: e.target.value })}
+                        required
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Credit Account</Form.Label>
+                      <Form.Select
+                        value={rpForm.credit_account}
+                        onChange={(e) => setRpForm({ ...rpForm, credit_account: e.target.value })}
+                        required
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+
+            <Card className="bg-light mb-3">
+              <Card.Header className="bg-secondary text-white">
+                <i className="fas fa-cog me-2"></i>
+                Additional Configuration
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Tax Account</Form.Label>
+                      <Form.Select
+                        value={rpForm.tax_account}
+                        onChange={(e) => setRpForm({ ...rpForm, tax_account: e.target.value })}
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Bank/Cash Account</Form.Label>
+                      <Form.Select
+                        value={rpForm.bank_account}
+                        onChange={(e) => setRpForm({ ...rpForm, bank_account: e.target.value })}
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+
             <Row>
               <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Debit Account</Form.Label>
-                  <Form.Select
-                    value={rpForm.debit_account}
-                    onChange={(e) => setRpForm({ ...rpForm, debit_account: e.target.value })}
-                    required
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                <Form.Check
+                  className="mb-3"
+                  type="checkbox"
+                  id="rp-taxable"
+                  label={<span className="fw-bold">Taxable</span>}
+                  checked={rpForm.is_taxable}
+                  onChange={(e) => setRpForm({ ...rpForm, is_taxable: e.target.checked })}
+                />
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Credit Account</Form.Label>
-                  <Form.Select
-                    value={rpForm.credit_account}
-                    onChange={(e) => setRpForm({ ...rpForm, credit_account: e.target.value })}
-                    required
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                <Form.Check
+                  className="mb-3"
+                  type="checkbox"
+                  id="rp-active"
+                  label={<span className="fw-bold">Active</span>}
+                  checked={rpForm.is_active}
+                  onChange={(e) => setRpForm({ ...rpForm, is_active: e.target.checked })}
+                />
               </Col>
             </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Tax Account</Form.Label>
-                  <Form.Select
-                    value={rpForm.tax_account}
-                    onChange={(e) => setRpForm({ ...rpForm, tax_account: e.target.value })}
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Bank/Cash Account</Form.Label>
-                  <Form.Select
-                    value={rpForm.bank_account}
-                    onChange={(e) => setRpForm({ ...rpForm, bank_account: e.target.value })}
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Check
-              className="mb-3"
-              type="checkbox"
-              label="Taxable"
-              checked={rpForm.is_taxable}
-              onChange={(e) => setRpForm({ ...rpForm, is_taxable: e.target.checked })}
-            />
-            <Form.Check
-              className="mb-3"
-              type="checkbox"
-              label="Active"
-              checked={rpForm.is_active}
-              onChange={(e) => setRpForm({ ...rpForm, is_active: e.target.checked })}
-            />
-            <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={() => setShowRpForm(false)}>Cancel</Button>
-              <Button type="submit">Save</Button>
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <Button 
+                variant="secondary" 
+                onClick={() => setShowRpForm(false)}
+                size="lg"
+                disabled={loading}
+              >
+                <i className="fas fa-times me-2"></i>
+                Cancel
+              </Button>
+              <Button type="submit" variant="info" size="lg" className="text-white" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className={`fas ${rpEditingId ? 'fa-save' : 'fa-plus-circle'} me-2`}></i>
+                    {rpEditingId ? 'Save Changes' : 'Create Mapping'}
+                  </>
+                )}
+              </Button>
             </div>
           </Form>
         </Modal.Body>

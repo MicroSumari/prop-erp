@@ -4,6 +4,7 @@ import {
   InputGroup, Pagination, Dropdown, Badge, Spinner
 } from 'react-bootstrap';
 import apiClient from '../../services/api';
+import './CustomerInvoices.css'; // Create this CSS file
 
 const CustomerInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -11,13 +12,17 @@ const CustomerInvoices = () => {
   const [accounts, setAccounts] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showView, setShowView] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
   const [loading, setLoading] = useState(false);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -51,6 +56,31 @@ const CustomerInvoices = () => {
   };
   const [formData, setFormData] = useState(initialFormData);
 
+  // Toast functions
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+  };
+
   const resolveAccountName = (id) => {
     const account = accounts.find((a) => a.id === id);
     return account ? `${account.account_number} - ${account.account_name}` : 'N/A';
@@ -71,44 +101,15 @@ const CustomerInvoices = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [invRes, tenantRes, accRes, ccRes] = await Promise.all([
-        apiClient.get('/sales/customer-invoices/', { 
-          params: { 
-            page: pagination.page,
-            page_size: pagination.pageSize,
-            ...(filters.search && { search: filters.search }),
-            ...(filters.status && { status: filters.status }),
-            ...(filters.tenant && { tenant: filters.tenant }),
-          }
-        }),
+      const [tenantRes, accRes, ccRes] = await Promise.all([
         apiClient.get('/property/related-parties/'),
         apiClient.get('/accounts/accounts/'),
         apiClient.get('/accounts/cost-centers/'),
       ]);
       
-      setInvoices(normalizeList(invRes.data));
       setTenants(normalizeList(tenantRes.data));
       setAccounts(normalizeList(accRes.data));
       setCostCenters(normalizeList(ccRes.data));
-      
-      // Handle pagination
-      if (invRes.data.results !== undefined) {
-        setInvoices(invRes.data.results);
-        setPagination(prev => ({
-          ...prev,
-          page: pagination.page,
-          totalCount: invRes.data.count,
-          totalPages: Math.ceil(invRes.data.count / prev.pageSize)
-        }));
-      } else {
-        setInvoices(normalizeList(invRes.data));
-        setPagination(prev => ({
-          ...prev,
-          page: 1,
-          totalCount: normalizeList(invRes.data).length,
-          totalPages: 1
-        }));
-      }
       
     } catch (err) {
       setError('Failed to load data');
@@ -174,7 +175,6 @@ const CustomerInvoices = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setLoading(true);
     try {
       const payload = {
@@ -184,17 +184,19 @@ const CustomerInvoices = () => {
       };
       if (editingId) {
         await apiClient.put(`/sales/customer-invoices/${editingId}/`, payload);
-        setSuccess('Customer invoice updated');
+        showSuccessToast('Customer invoice updated successfully!');
       } else {
         await apiClient.post('/sales/customer-invoices/', payload);
-        setSuccess('Customer invoice created');
+        showSuccessToast('Customer invoice created successfully!');
       }
       setShowForm(false);
       setEditingId(null);
       setFormData(initialFormData);
       fetchInvoices(pagination.page);
     } catch (err) {
-      setError('Failed to create customer invoice: ' + (err.response?.data?.detail || err.message));
+      const errorMsg = 'Failed to create customer invoice: ' + (err.response?.data?.detail || err.message);
+      setError(errorMsg);
+      showErrorToast(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -315,6 +317,29 @@ const CustomerInvoices = () => {
 
   return (
     <Container fluid>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
       <div className="page-header mb-4">
         <h1>
           <i className="fas fa-file-invoice me-2"></i>
@@ -327,7 +352,6 @@ const CustomerInvoices = () => {
       </div>
 
       {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
 
       {/* Filters and Search Bar */}
       <Card className="mb-4">
@@ -547,7 +571,7 @@ const CustomerInvoices = () => {
         </Card.Body>
       </Card>
 
-      {/* Create/Edit Modal (remains exactly the same) */}
+      {/* Create/Edit Modal - Improved UI */}
       <Modal
         show={showForm}
         onHide={() => {
@@ -556,19 +580,29 @@ const CustomerInvoices = () => {
           setFormData(initialFormData);
         }}
         size="lg"
+        centered
+        backdrop="static"
       >
-        <Modal.Header closeButton>
-          <Modal.Title>{editingId ? 'Edit Customer Invoice' : 'Create Customer Invoice'}</Modal.Title>
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title>
+            <i className={`fas ${editingId ? 'fa-edit' : 'fa-plus-circle'} me-2`}></i>
+            {editingId ? 'Edit Customer Invoice' : 'Create Customer Invoice'}
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           <Form onSubmit={handleSubmit}>
-            {/* Form fields remain exactly the same */}
             <Row>
-              <Col md={4}>
+              <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Tenant</Form.Label>
-                  <Form.Select name="tenant" value={formData.tenant} onChange={handleChange} required>
-                    <option value="">Select tenant</option>
+                  <Form.Label className="fw-bold">Tenant <span className="text-danger">*</span></Form.Label>
+                  <Form.Select 
+                    name="tenant" 
+                    value={formData.tenant} 
+                    onChange={handleChange} 
+                    required
+                    className="border-2"
+                  >
+                    <option value="">-- Select Tenant --</option>
                     {tenants.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.first_name} {t.last_name}
@@ -577,98 +611,198 @@ const CustomerInvoices = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={3}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Invoice Date</Form.Label>
-                  <Form.Control type="date" name="invoice_date" value={formData.invoice_date} onChange={handleChange} required />
+                  <Form.Label className="fw-bold">Invoice Date <span className="text-danger">*</span></Form.Label>
+                  <Form.Control 
+                    type="date" 
+                    name="invoice_date" 
+                    value={formData.invoice_date} 
+                    onChange={handleChange} 
+                    required 
+                    className="border-2"
+                  />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={3}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Due Date</Form.Label>
-                  <Form.Control type="date" name="due_date" value={formData.due_date} onChange={handleChange} />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Amount</Form.Label>
-                  <Form.Control type="number" name="amount" value={formData.amount} onChange={handleChange} required />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Check type="checkbox" name="is_taxable" label="Taxable" checked={formData.is_taxable} onChange={handleChange} />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Tax Rate (%)</Form.Label>
-                  <Form.Control type="number" name="tax_rate" value={formData.tax_rate} onChange={handleChange} />
+                  <Form.Label className="fw-bold">Due Date</Form.Label>
+                  <Form.Control 
+                    type="date" 
+                    name="due_date" 
+                    value={formData.due_date} 
+                    onChange={handleChange} 
+                    className="border-2"
+                  />
                 </Form.Group>
               </Col>
             </Row>
-            <Row>
+
+            <Row className="mt-2">
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Income Account</Form.Label>
-                  <Form.Select name="income_account" value={formData.income_account} onChange={handleChange} required>
-                    <option value="">Select account</option>
-                    {accounts.filter((a) => a.account_type === 'income').map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
+                  <Form.Label className="fw-bold">Amount <span className="text-danger">*</span></Form.Label>
+                  <Form.Control 
+                    type="number" 
+                    name="amount" 
+                    value={formData.amount} 
+                    onChange={handleChange} 
+                    required 
+                    placeholder="0.00"
+                    className="border-2"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4} className="d-flex align-items-center">
+                <Form.Group className="mb-3">
+                  <Form.Check 
+                    type="checkbox" 
+                    name="is_taxable" 
+                    label={<span className="fw-bold">Taxable</span>} 
+                    checked={formData.is_taxable} 
+                    onChange={handleChange} 
+                    className="mt-4"
+                  />
                 </Form.Group>
               </Col>
               <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Tax Account</Form.Label>
-                  <Form.Select name="tax_account" value={formData.tax_account} onChange={handleChange}>
-                    <option value="">Select account</option>
-                    {accounts.filter((a) => a.account_type === 'liability').map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Tenant Account</Form.Label>
-                  <Form.Select name="tenant_account" value={formData.tenant_account} onChange={handleChange}>
-                    <option value="">Select account</option>
-                    {accounts.filter((a) => a.account_type === 'asset').map((a) => (
-                      <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Cost Center</Form.Label>
-                  <Form.Select name="cost_center" value={formData.cost_center} onChange={handleChange}>
-                    <option value="">Select cost center</option>
-                    {costCenters.map((c) => (
-                      <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Status</Form.Label>
-                  <Form.Select name="status" value={formData.status} onChange={handleChange}>
-                    <option value="draft">Draft</option>
-                    <option value="submitted">Submitted</option>
-                    <option value="paid">Paid</option>
-                    <option value="void">Void</option>
-                  </Form.Select>
-                </Form.Group>
+                {formData.is_taxable && (
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-bold">Tax Rate (%)</Form.Label>
+                    <Form.Control 
+                      type="number" 
+                      name="tax_rate" 
+                      value={formData.tax_rate} 
+                      onChange={handleChange} 
+                      placeholder="15"
+                      className="border-2"
+                    />
+                  </Form.Group>
+                )}
               </Col>
             </Row>
-            <div className="d-flex justify-content-end gap-2">
+
+            <Card className="bg-light mb-3">
+              <Card.Header className="bg-secondary text-white">
+                <i className="fas fa-warehouse me-2"></i>
+                Accounting Configuration
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Income Account</Form.Label>
+                      <Form.Select 
+                        name="income_account" 
+                        value={formData.income_account} 
+                        onChange={handleChange} 
+                        required
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.filter((a) => a.account_type === 'income').map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Tax Account</Form.Label>
+                      <Form.Select 
+                        name="tax_account" 
+                        value={formData.tax_account} 
+                        onChange={handleChange}
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.filter((a) => a.account_type === 'liability').map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Tenant Account</Form.Label>
+                      <Form.Select 
+                        name="tenant_account" 
+                        value={formData.tenant_account} 
+                        onChange={handleChange}
+                        className="border-2"
+                      >
+                        <option value="">-- Select Account --</option>
+                        {accounts.filter((a) => a.account_type === 'asset').map((a) => (
+                          <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Cost Center</Form.Label>
+                      <Form.Select 
+                        name="cost_center" 
+                        value={formData.cost_center} 
+                        onChange={handleChange}
+                        className="border-2"
+                      >
+                        <option value="">-- Select Cost Center --</option>
+                        {costCenters.map((c) => (
+                          <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Status</Form.Label>
+                      <Form.Select 
+                        name="status" 
+                        value={formData.status} 
+                        onChange={handleChange}
+                        className="border-2"
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="submitted">Submitted</option>
+                        <option value="paid">Paid</option>
+                        <option value="void">Void</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Lease</Form.Label>
+                      <Form.Control 
+                        type="text" 
+                        name="lease" 
+                        value={formData.lease} 
+                        onChange={handleChange}
+                        placeholder="Optional lease reference"
+                        className="border-2"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold">Notes</Form.Label>
+              <Form.Control 
+                as="textarea" 
+                rows={2} 
+                name="notes" 
+                value={formData.notes} 
+                onChange={handleChange}
+                placeholder="Additional notes (optional)"
+                className="border-2"
+              />
+            </Form.Group>
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -676,46 +810,160 @@ const CustomerInvoices = () => {
                   setEditingId(null);
                   setFormData(initialFormData);
                 }}
+                size="lg"
               >
+                <i className="fas fa-times me-2"></i>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={loading}>
+              <Button type="submit" variant="primary" disabled={loading} size="lg">
                 {loading ? (
-                  <Spinner animation="border" size="sm" className="me-2" />
-                ) : null}
-                {editingId ? 'Save Changes' : 'Create Invoice'}
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    {editingId ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  <>
+                    <i className={`fas ${editingId ? 'fa-save' : 'fa-plus-circle'} me-2`}></i>
+                    {editingId ? 'Save Changes' : 'Create Invoice'}
+                  </>
+                )}
               </Button>
             </div>
           </Form>
         </Modal.Body>
       </Modal>
 
-      {/* View Modal (remains exactly the same) */}
-      <Modal show={showView} onHide={() => setShowView(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Customer Invoice Details</Modal.Title>
+      {/* View Modal - Improved UI */}
+      <Modal show={showView} onHide={() => setShowView(false)} size="lg" centered>
+        <Modal.Header closeButton className="bg-info text-white">
+          <Modal.Title>
+            <i className="fas fa-file-invoice me-2"></i>
+            Customer Invoice Details
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           {viewItem && (
-            <div className="d-grid gap-2">
-              <div><strong>Invoice #:</strong> {viewItem.invoice_number}</div>
-              <div><strong>Tenant:</strong> {resolveTenantName(viewItem.tenant)}</div>
-              <div><strong>Date:</strong> {formatDate(viewItem.invoice_date)}</div>
-              <div><strong>Due Date:</strong> {formatDate(viewItem.due_date)}</div>
-              <div><strong>Amount:</strong> {formatCurrency(viewItem.amount)}</div>
-              <div><strong>Taxable:</strong> {viewItem.is_taxable ? 'Yes' : 'No'}</div>
-              <div><strong>Tax Rate:</strong> {viewItem.tax_rate || 0}%</div>
-              <div><strong>Tax Amount:</strong> {formatCurrency(viewItem.tax_amount)}</div>
-              <div><strong>Total:</strong> <strong>{formatCurrency(viewItem.total_amount)}</strong></div>
-              <div><strong>Status:</strong> {getStatusBadge(viewItem.status)}</div>
-              <div><strong>Income Account:</strong> {resolveAccountName(viewItem.income_account)}</div>
-              <div><strong>Tenant Account:</strong> {resolveAccountName(viewItem.tenant_account)}</div>
-              <div><strong>Tax Account:</strong> {resolveAccountName(viewItem.tax_account)}</div>
-              <div><strong>Cost Center:</strong> {resolveCostCenter(viewItem.cost_center)}</div>
-              {viewItem.notes && <div><strong>Notes:</strong> {viewItem.notes}</div>}
-            </div>
+            <Row>
+              <Col md={6}>
+                <Card className="mb-3 shadow-sm">
+                  <Card.Header className="bg-light fw-bold">
+                    <i className="fas fa-info-circle me-2"></i>
+                    Invoice Information
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="d-grid gap-2">
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Invoice #:</span>
+                        <span className="badge bg-secondary fs-6 p-2">{viewItem.invoice_number}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Tenant:</span>
+                        <span>{resolveTenantName(viewItem.tenant)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Invoice Date:</span>
+                        <span>{formatDate(viewItem.invoice_date)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Due Date:</span>
+                        <span>{formatDate(viewItem.due_date)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Status:</span>
+                        <span>{getStatusBadge(viewItem.status)}</span>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={6}>
+                <Card className="mb-3 shadow-sm">
+                  <Card.Header className="bg-light fw-bold">
+                    <i className="fas fa-calculator me-2"></i>
+                    Amount Details
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="d-grid gap-2">
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Amount:</span>
+                        <span className="text-primary fw-bold">{formatCurrency(viewItem.amount)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="fw-bold">Taxable:</span>
+                        <span>{viewItem.is_taxable ? 
+                          <Badge bg="success">Yes</Badge> : 
+                          <Badge bg="secondary">No</Badge>
+                        }</span>
+                      </div>
+                      {viewItem.is_taxable && (
+                        <>
+                          <div className="d-flex justify-content-between border-bottom pb-2">
+                            <span className="fw-bold">Tax Rate:</span>
+                            <span>{viewItem.tax_rate}%</span>
+                          </div>
+                          <div className="d-flex justify-content-between border-bottom pb-2">
+                            <span className="fw-bold">Tax Amount:</span>
+                            <span>{formatCurrency(viewItem.tax_amount)}</span>
+                          </div>
+                        </>
+                      )}
+                      <div className="d-flex justify-content-between pt-2">
+                        <span className="fw-bold fs-5">Total:</span>
+                        <span className="text-success fw-bold fs-5">{formatCurrency(viewItem.total_amount)}</span>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={12}>
+                <Card className="shadow-sm">
+                  <Card.Header className="bg-light fw-bold">
+                    <i className="fas fa-warehouse me-2"></i>
+                    Accounting Details
+                  </Card.Header>
+                  <Card.Body>
+                    <Row>
+                      <Col md={6}>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Income Account:</span>
+                          <span>{resolveAccountName(viewItem.income_account)}</span>
+                        </div>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Tenant Account:</span>
+                          <span>{resolveAccountName(viewItem.tenant_account)}</span>
+                        </div>
+                      </Col>
+                      <Col md={6}>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Tax Account:</span>
+                          <span>{resolveAccountName(viewItem.tax_account)}</span>
+                        </div>
+                        <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+                          <span className="fw-bold">Cost Center:</span>
+                          <span>{resolveCostCenter(viewItem.cost_center)}</span>
+                        </div>
+                      </Col>
+                      {viewItem.notes && (
+                        <Col md={12}>
+                          <div className="mt-3 p-3 bg-light rounded">
+                            <span className="fw-bold">Notes:</span>
+                            <p className="mt-2 mb-0">{viewItem.notes}</p>
+                          </div>
+                        </Col>
+                      )}
+                    </Row>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
           )}
         </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowView(false)}>
+            <i className="fas fa-times me-2"></i>
+            Close
+          </Button>
+        </Modal.Footer>
       </Modal>
     </Container>
   );

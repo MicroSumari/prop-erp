@@ -12,6 +12,14 @@ function PropertyUnitForm() {
   const [success, setSuccess] = useState('');
   const [properties, setProperties] = useState([]);
   
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when form should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
+  
   // Unit form state
   const [unitData, setUnitData] = useState({
     property: '',
@@ -59,6 +67,35 @@ function PropertyUnitForm() {
     }
   }, [id]);
 
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setUnitData(prev => ({
@@ -95,11 +132,11 @@ function PropertyUnitForm() {
       if (id) {
         // Update existing unit
         await unitService.update(id, unitPayload);
-        setSuccess('Property unit updated successfully!');
+        showSuccessToast('Property unit updated successfully!');
       } else {
         // Create new unit
         await unitService.create(unitPayload);
-        setSuccess('Property unit created successfully!');
+        showSuccessToast('Property unit created successfully!');
       }
 
       setTimeout(() => navigate('/property-units'), 2000);
@@ -112,17 +149,44 @@ function PropertyUnitForm() {
         apiErrors?.detail ||
         `Failed to ${id ? 'update' : 'create'} unit`;
       setError(errorMessage);
+      showErrorToast(errorMessage);
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Helper variable for form disabled state
+  const isDisabled = loading || isFormDisabled;
+
   const selectedProperty = properties.find(p => p.id === parseInt(unitData.property));
 
   return (
     <Container className="property-form-container mt-5">
-      <Card className="property-form-card">
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={loading}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
+      <Card className={`property-form-card ${isDisabled ? 'form-disabled' : ''}`}>
         <Card.Header className="bg-primary text-white">
           <h2 className="mb-0">
             <i className="fas fa-cube me-2"></i>
@@ -143,6 +207,7 @@ function PropertyUnitForm() {
                 value={unitData.property}
                 onChange={handleChange}
                 required
+                disabled={isDisabled}
               >
                 <option value="">-- Select Property --</option>
                 {properties.map(property => (
@@ -170,6 +235,7 @@ function PropertyUnitForm() {
                     onChange={handleChange}
                     placeholder="e.g., 101, 102, Shop-A"
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -180,6 +246,7 @@ function PropertyUnitForm() {
                     name="unit_type"
                     value={unitData.unit_type}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   >
                     <option value="apartment">Apartment</option>
                     <option value="shop">Shop</option>
@@ -205,6 +272,7 @@ function PropertyUnitForm() {
                     placeholder="0.00"
                     step="0.01"
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -217,6 +285,7 @@ function PropertyUnitForm() {
                     value={unitData.bedrooms}
                     onChange={handleChange}
                     placeholder="0"
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -229,6 +298,7 @@ function PropertyUnitForm() {
                     value={unitData.bathrooms}
                     onChange={handleChange}
                     placeholder="0"
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -242,6 +312,7 @@ function PropertyUnitForm() {
                     onChange={handleChange}
                     placeholder="0.00"
                     step="0.01"
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -255,6 +326,7 @@ function PropertyUnitForm() {
                     name="status"
                     value={unitData.status}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   >
                     <option value="vacant">Vacant</option>
                     <option value="occupied">Occupied</option>
@@ -268,7 +340,7 @@ function PropertyUnitForm() {
               <Button
                 variant="primary"
                 type="submit"
-                disabled={loading}
+                disabled={isDisabled}
                 className="btn-lg"
               >
                 {loading ? (
@@ -287,6 +359,7 @@ function PropertyUnitForm() {
                 variant="secondary"
                 onClick={() => navigate('/property-units')}
                 className="btn-lg"
+                disabled={isDisabled}
               >
                 <i className="fas fa-arrow-left me-2"></i>
                 Cancel

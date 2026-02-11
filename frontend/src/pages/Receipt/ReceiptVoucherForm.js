@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Card, Form, Button, Alert, Spinner, Row, Col } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../../services/api';
-import FormModal from '../../components/FormModal';
+import './ReceiptVoucherForm.css'; // Create this CSS file
 
 function ReceiptVoucherForm() {
   const { id } = useParams();
@@ -11,9 +11,15 @@ function ReceiptVoucherForm() {
   const [error, setError] = useState('');
   const [leases, setLeases] = useState([]);
   const [tenants, setTenants] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when form should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
+  
   const [formData, setFormData] = useState({
     lease: '',
     tenant: '',
@@ -69,11 +75,44 @@ function ReceiptVoucherForm() {
     }
   };
 
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+      // Navigate after toast disappears
+      navigate('/receipt-vouchers');
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+    // If it was a success toast, navigate back
+    if (toastVariant === 'success') {
+      navigate('/receipt-vouchers');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setModalLoading(true);
-    setShowModal(true);
     setError('');
 
     try {
@@ -98,20 +137,15 @@ function ReceiptVoucherForm() {
 
       if (id) {
         await apiClient.put(`/sales/receipt-vouchers/${id}/`, dataToSend);
-        setSuccessMessage('Receipt voucher updated successfully!');
+        showSuccessToast('Receipt voucher updated successfully!');
       } else {
         await apiClient.post('/sales/receipt-vouchers/', dataToSend);
-        setSuccessMessage('Receipt voucher created successfully!');
+        showSuccessToast('Receipt voucher created successfully!');
       }
-      
-      setModalLoading(false);
-      setTimeout(() => {
-        setShowModal(false);
-        navigate('/receipt-vouchers');
-      }, 1500);
     } catch (err) {
-      setShowModal(false);
-      setError(err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Error saving receipt voucher');
+      const errorMsg = err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Error saving receipt voucher';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -126,6 +160,9 @@ function ReceiptVoucherForm() {
     }));
   };
 
+  // Helper variable for form disabled state
+  const isDisabled = loading || isFormDisabled;
+
   if (loading && id) {
     return (
       <Container className="mt-4 text-center">
@@ -136,7 +173,30 @@ function ReceiptVoucherForm() {
 
   return (
     <Container className="mt-4">
-      <Card>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={loading}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
+      <Card className={`${isDisabled ? 'form-disabled' : ''}`}>
         <Card.Header>
           <h3>
             <i className="fas fa-receipt me-2"></i>
@@ -156,7 +216,7 @@ function ReceiptVoucherForm() {
                     value={formData.lease}
                     onChange={handleChange}
                     required
-                    disabled={!!id}
+                    disabled={!!id || isDisabled}
                   >
                     <option value="">Select Lease</option>
                     {leases.map(lease => (
@@ -175,6 +235,7 @@ function ReceiptVoucherForm() {
                     value={formData.tenant}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   >
                     <option value="">Select Tenant</option>
                     {tenants.map(tenant => (
@@ -197,6 +258,7 @@ function ReceiptVoucherForm() {
                     value={formData.payment_date}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -211,6 +273,7 @@ function ReceiptVoucherForm() {
                     onChange={handleChange}
                     required
                     placeholder="0.00"
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -225,6 +288,7 @@ function ReceiptVoucherForm() {
                     value={formData.payment_method}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   >
                     <option value="cash">Cash</option>
                     <option value="cheque">Cheque</option>
@@ -240,6 +304,7 @@ function ReceiptVoucherForm() {
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   >
                     <option value="draft">Draft</option>
                     <option value="cleared">Cleared</option>
@@ -258,6 +323,7 @@ function ReceiptVoucherForm() {
                     name="bank_name"
                     value={formData.bank_name}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -270,6 +336,7 @@ function ReceiptVoucherForm() {
                     value={formData.cheque_number}
                     onChange={handleChange}
                     placeholder="Cheque/Transaction number"
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -284,6 +351,7 @@ function ReceiptVoucherForm() {
                     name="cheque_date"
                     value={formData.cheque_date}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -295,6 +363,7 @@ function ReceiptVoucherForm() {
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -311,17 +380,31 @@ function ReceiptVoucherForm() {
                     value={formData.notes}
                     onChange={handleChange}
                     placeholder="Additional notes"
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
             </Row>
 
             <div className="d-flex gap-2">
-              <Button variant="primary" type="submit" disabled={loading}>
-                <i className="fas fa-save me-2"></i>
-                {loading ? 'Saving...' : (id ? 'Update' : 'Create')} Receipt
+              <Button variant="primary" type="submit" disabled={isDisabled}>
+                {loading ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-save me-2"></i>
+                    {id ? 'Update' : 'Create'} Receipt
+                  </>
+                )}
               </Button>
-              <Button variant="secondary" onClick={() => navigate('/receipt-vouchers')}>
+              <Button 
+                variant="secondary" 
+                onClick={() => navigate('/receipt-vouchers')}
+                disabled={isDisabled}
+              >
                 <i className="fas fa-times me-2"></i>
                 Cancel
               </Button>
@@ -329,16 +412,6 @@ function ReceiptVoucherForm() {
           </Form>
         </Card.Body>
       </Card>
-      
-      <FormModal 
-        show={showModal}
-        loading={modalLoading}
-        message={successMessage}
-        onHide={() => {
-          setShowModal(false);
-          navigate('/receipt-vouchers');
-        }}
-      />
     </Container>
   );
 }

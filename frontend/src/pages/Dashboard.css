@@ -1,86 +1,140 @@
+/* Dashboard.css - Only UI improvements, no extra elements */
+
 .dashboard {
-  padding: 20px 0;
+  background-color: #f8f9fa;
+  min-height: 100vh;
 }
 
-.dashboard-header {
-  border-bottom: 2px solid #e9ecef;
-  padding-bottom: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.dashboard-header h1 {
-  color: #0d47a1;
-  font-weight: 700;
+.dashboard-title {
   font-size: 2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
 }
 
-.dashboard-header p {
-  font-size: 1rem;
-  margin: 0.5rem 0 0 0;
+.dashboard-subtitle {
+  font-size: 1.1rem;
+  color: #718096;
 }
 
+/* Stats Cards Improvements */
 .stat-card {
   border: none;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  height: 100%;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+  border: 1px solid #e2e8f0;
 }
 
 .stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
 }
 
-.stat-card .card-body {
-  padding: 1.5rem;
+.hover-lift:hover {
+  transform: translateY(-4px);
 }
 
-.stat-content {
+/* Icon Wrapper */
+.stat-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.stat-card-1 .stat-icon-wrapper {
+  background-color: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+}
+
+.stat-card-2 .stat-icon-wrapper {
+  background-color: rgba(66, 153, 225, 0.1);
+  color: #4299e1;
+}
+
+.stat-card-3 .stat-icon-wrapper {
+  background-color: rgba(245, 101, 101, 0.1);
+  color: #f56565;
+}
+
+.stat-card-4 .stat-icon-wrapper {
+  background-color: rgba(72, 187, 120, 0.1);
+  color: #48bb78;
 }
 
 .stat-icon {
-  font-size: 2.5rem;
-  color: #0d47a1;
-  opacity: 0.7;
-  min-width: 50px;
+  font-size: 1.25rem;
 }
 
+/* Numbers and Labels */
 .stat-number {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  margin-bottom: 0;
-  color: #0d47a1;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
   line-height: 1.2;
 }
 
 .stat-label {
   font-size: 0.875rem;
-  color: #6c757d;
-  margin-bottom: 0;
+  color: #718096;
   font-weight: 500;
-  margin-top: 0.25rem;
+  margin: 0;
 }
 
-/* Quick Actions Section */
-.quick-actions {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* Alert Animation */
+.alert-animate {
+  animation: fadeIn 0.5s ease-out;
 }
 
-.quick-actions h3 {
-  color: #0d47a1;
-  margin-bottom: 1rem;
-  font-weight: 600;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.quick-actions .btn {
-  margin-right: 0.5rem;
-  margin-bottom: 0.5rem;
+/* Card Header Improvements */
+.card-header.bg-light {
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* Shadow and Border Improvements */
+.shadow-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.border-0 {
+  border: none !important;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .dashboard-title {
+    font-size: 1.75rem;
+  }
+  
+  .stat-number {
+    font-size: 1.5rem;
+  }
+  
+  .stat-icon-wrapper {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
+/* Smooth loading state */
+.mt-5.text-center {
+  padding: 4rem 0;
 }

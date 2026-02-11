@@ -12,6 +12,14 @@ function PropertyForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when form should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
+  
   // Property form state
   const [propertyData, setPropertyData] = useState({
     property_id: '',
@@ -69,6 +77,35 @@ function PropertyForm() {
       loadProperty();
     }
   }, [id]);
+
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+  };
 
   const handlePropertyChange = (e) => {
     const { name, value } = e.target;
@@ -137,12 +174,12 @@ function PropertyForm() {
         // Update existing property
         await propertyService.update(id, normalizedPropertyData);
         propertyId = id;
-        setSuccess('Property updated successfully!');
+        showSuccessToast('Property updated successfully!');
       } else {
         // Create new property
         const propertyRes = await propertyService.create(normalizedPropertyData);
         propertyId = propertyRes.data.id;
-        setSuccess('Property created successfully!');
+        showSuccessToast('Property created successfully!');
       }
 
       // Create new units (only non-existing ones)
@@ -168,16 +205,44 @@ function PropertyForm() {
 
       setTimeout(() => navigate('/properties'), 2000);
     } catch (err) {
-      setError(err.response?.data?.detail || `Failed to ${id ? 'update' : 'create'} property`);
+      const errorMsg = err.response?.data?.detail || `Failed to ${id ? 'update' : 'create'} property`;
+      setError(errorMsg);
+      showErrorToast(errorMsg);
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Helper variable for form disabled state
+  const isDisabled = loading || isFormDisabled;
+
   return (
     <Container className="property-form-container mt-5">
-      <Card className="property-form-card">
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={loading}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
+      <Card className={`property-form-card ${isDisabled ? 'form-disabled' : ''}`}>
         <Card.Header className="bg-primary text-white">
           <h2 className="mb-0">
             <i className="fas fa-plus-circle me-2"></i>
@@ -191,13 +256,13 @@ function PropertyForm() {
           <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
             <Nav variant="pills" className="mb-4">
               <Nav.Item>
-                <Nav.Link eventKey="property">
+                <Nav.Link eventKey="property" disabled={isDisabled}>
                   <i className="fas fa-home me-2"></i>
                   Property Details
                 </Nav.Link>
               </Nav.Item>
               <Nav.Item>
-                <Nav.Link eventKey="units">
+                <Nav.Link eventKey="units" disabled={isDisabled}>
                   <i className="fas fa-cube me-2"></i>
                   Property Units ({units.length})
                 </Nav.Link>
@@ -221,6 +286,7 @@ function PropertyForm() {
                           onChange={handlePropertyChange}
                           placeholder="e.g., PROP001"
                           required
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -234,6 +300,7 @@ function PropertyForm() {
                           onChange={handlePropertyChange}
                           placeholder="e.g., Downtown Office Complex"
                           required
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -248,6 +315,7 @@ function PropertyForm() {
                       onChange={handlePropertyChange}
                       placeholder="Property description"
                       rows={3}
+                      disabled={isDisabled}
                     />
                   </Form.Group>
 
@@ -259,6 +327,7 @@ function PropertyForm() {
                           name="property_type"
                           value={propertyData.property_type}
                           onChange={handlePropertyChange}
+                          disabled={isDisabled}
                         >
                           <option value="residential">Residential</option>
                           <option value="commercial">Commercial</option>
@@ -275,6 +344,7 @@ function PropertyForm() {
                           name="status"
                           value={propertyData.status}
                           onChange={handlePropertyChange}
+                          disabled={isDisabled}
                         >
                           <option value="available">Available</option>
                           <option value="occupied">Occupied</option>
@@ -292,6 +362,7 @@ function PropertyForm() {
                           name="acquisition_date"
                           value={propertyData.acquisition_date}
                           onChange={handlePropertyChange}
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -308,6 +379,7 @@ function PropertyForm() {
                       onChange={handlePropertyChange}
                       placeholder="Full street address"
                       required
+                      disabled={isDisabled}
                     />
                   </Form.Group>
 
@@ -321,6 +393,7 @@ function PropertyForm() {
                           value={propertyData.city}
                           onChange={handlePropertyChange}
                           placeholder="City"
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -333,6 +406,7 @@ function PropertyForm() {
                           value={propertyData.state}
                           onChange={handlePropertyChange}
                           placeholder="State"
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -345,6 +419,7 @@ function PropertyForm() {
                           value={propertyData.zip_code}
                           onChange={handlePropertyChange}
                           placeholder="ZIP Code"
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -360,6 +435,7 @@ function PropertyForm() {
                           value={propertyData.country}
                           onChange={handlePropertyChange}
                           placeholder="Country"
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -377,6 +453,7 @@ function PropertyForm() {
                           value={propertyData.year_built}
                           onChange={handlePropertyChange}
                           placeholder="YYYY"
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -393,6 +470,7 @@ function PropertyForm() {
                           onChange={handlePropertyChange}
                           placeholder="0.00"
                           step="0.01"
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -406,6 +484,7 @@ function PropertyForm() {
                           onChange={handlePropertyChange}
                           placeholder="0.00"
                           step="0.01"
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -418,6 +497,7 @@ function PropertyForm() {
                           value={propertyData.number_of_units}
                           onChange={handlePropertyChange}
                           placeholder="0"
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -427,7 +507,7 @@ function PropertyForm() {
                     <Button
                       variant="primary"
                       type="submit"
-                      disabled={loading}
+                      disabled={isDisabled}
                       className="btn-lg"
                     >
                       {loading ? (
@@ -446,6 +526,7 @@ function PropertyForm() {
                       variant="secondary"
                       onClick={() => navigate('/properties')}
                       className="btn-lg"
+                      disabled={isDisabled}
                     >
                       <i className="fas fa-arrow-left me-2"></i>
                       Cancel
@@ -472,6 +553,7 @@ function PropertyForm() {
                         variant="success"
                         onClick={() => setShowUnitForm(!showUnitForm)}
                         className="mb-3"
+                        disabled={isDisabled}
                       >
                         <i className="fas fa-plus me-2"></i>
                         {showUnitForm ? 'Cancel' : 'Add New Unit'}
@@ -496,106 +578,118 @@ function PropertyForm() {
                                     value={unitData.unit_number}
                                     onChange={handleUnitChange}
                                     placeholder="e.g., 101, 102, Shop-A"
+                                    disabled={isDisabled}
                                   />
                                 </Form.Group>
                               </Col>
-                          <Col md={6}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Unit Type</Form.Label>
-                              <Form.Select
-                                name="unit_type"
-                                value={unitData.unit_type}
-                                onChange={handleUnitChange}
-                              >
-                                <option value="apartment">Apartment</option>
-                                <option value="shop">Shop</option>
-                                <option value="showroom">Showroom</option>
-                                <option value="office">Office</option>
-                                <option value="warehouse">Warehouse</option>
-                                <option value="parking">Parking</option>
-                                <option value="other">Other</option>
-                              </Form.Select>
-                            </Form.Group>
-                          </Col>
-                        </Row>
+                              <Col md={6}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Unit Type</Form.Label>
+                                  <Form.Select
+                                    name="unit_type"
+                                    value={unitData.unit_type}
+                                    onChange={handleUnitChange}
+                                    disabled={isDisabled}
+                                  >
+                                    <option value="apartment">Apartment</option>
+                                    <option value="shop">Shop</option>
+                                    <option value="showroom">Showroom</option>
+                                    <option value="office">Office</option>
+                                    <option value="warehouse">Warehouse</option>
+                                    <option value="parking">Parking</option>
+                                    <option value="other">Other</option>
+                                  </Form.Select>
+                                </Form.Group>
+                              </Col>
+                            </Row>
 
-                        <Row>
-                          <Col md={3}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Area (sq m) <span className="text-danger">*</span></Form.Label>
-                              <Form.Control
-                                type="number"
-                                name="area"
-                                value={unitData.area}
-                                onChange={handleUnitChange}
-                                placeholder="0.00"
-                                step="0.01"
-                              />
-                            </Form.Group>
-                          </Col>
-                          <Col md={3}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Bedrooms</Form.Label>
-                              <Form.Control
-                                type="number"
-                                name="bedrooms"
-                                value={unitData.bedrooms}
-                                onChange={handleUnitChange}
-                                placeholder="0"
-                              />
-                            </Form.Group>
-                          </Col>
-                          <Col md={3}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Bathrooms</Form.Label>
-                              <Form.Control
-                                type="number"
-                                name="bathrooms"
-                                value={unitData.bathrooms}
-                                onChange={handleUnitChange}
-                                placeholder="0"
-                              />
-                            </Form.Group>
-                          </Col>
-                          <Col md={3}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Monthly Rent</Form.Label>
-                              <Form.Control
-                                type="number"
-                                name="monthly_rent"
-                                value={unitData.monthly_rent}
-                                onChange={handleUnitChange}
-                                placeholder="0.00"
-                                step="0.01"
-                              />
-                            </Form.Group>
-                          </Col>
-                        </Row>
+                            <Row>
+                              <Col md={3}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Area (sq m) <span className="text-danger">*</span></Form.Label>
+                                  <Form.Control
+                                    type="number"
+                                    name="area"
+                                    value={unitData.area}
+                                    onChange={handleUnitChange}
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    disabled={isDisabled}
+                                  />
+                                </Form.Group>
+                              </Col>
+                              <Col md={3}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Bedrooms</Form.Label>
+                                  <Form.Control
+                                    type="number"
+                                    name="bedrooms"
+                                    value={unitData.bedrooms}
+                                    onChange={handleUnitChange}
+                                    placeholder="0"
+                                    disabled={isDisabled}
+                                  />
+                                </Form.Group>
+                              </Col>
+                              <Col md={3}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Bathrooms</Form.Label>
+                                  <Form.Control
+                                    type="number"
+                                    name="bathrooms"
+                                    value={unitData.bathrooms}
+                                    onChange={handleUnitChange}
+                                    placeholder="0"
+                                    disabled={isDisabled}
+                                  />
+                                </Form.Group>
+                              </Col>
+                              <Col md={3}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Monthly Rent</Form.Label>
+                                  <Form.Control
+                                    type="number"
+                                    name="monthly_rent"
+                                    value={unitData.monthly_rent}
+                                    onChange={handleUnitChange}
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    disabled={isDisabled}
+                                  />
+                                </Form.Group>
+                              </Col>
+                            </Row>
 
-                        <Row>
-                          <Col md={6}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Status</Form.Label>
-                              <Form.Select
-                                name="status"
-                                value={unitData.status}
-                                onChange={handleUnitChange}
-                              >
-                                <option value="vacant">Vacant</option>
-                                <option value="occupied">Occupied</option>
-                                <option value="maintenance">Under Maintenance</option>
-                              </Form.Select>
-                            </Form.Group>
-                          </Col>
-                        </Row>
+                            <Row>
+                              <Col md={6}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Status</Form.Label>
+                                  <Form.Select
+                                    name="status"
+                                    value={unitData.status}
+                                    onChange={handleUnitChange}
+                                    disabled={isDisabled}
+                                  >
+                                    <option value="vacant">Vacant</option>
+                                    <option value="occupied">Occupied</option>
+                                    <option value="maintenance">Under Maintenance</option>
+                                  </Form.Select>
+                                </Form.Group>
+                              </Col>
+                            </Row>
 
-                        <Button variant="success" onClick={addUnitToList} className="me-2">
-                          <i className="fas fa-check me-2"></i>
-                          Add Unit
-                        </Button>
-                      </Card.Body>
-                    </Card>
-                  )}
+                            <Button 
+                              variant="success" 
+                              onClick={addUnitToList} 
+                              className="me-2"
+                              disabled={isDisabled}
+                            >
+                              <i className="fas fa-check me-2"></i>
+                              Add Unit
+                            </Button>
+                          </Card.Body>
+                        </Card>
+                      )}
                     </>
                   )}
 
@@ -619,6 +713,7 @@ function PropertyForm() {
                                   variant="danger"
                                   size="sm"
                                   onClick={() => removeUnit(unit.id)}
+                                  disabled={isDisabled}
                                 >
                                   <i className="fas fa-trash me-1"></i>
                                   Remove

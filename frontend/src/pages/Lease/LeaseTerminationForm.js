@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Card, Form, Button, Alert, Spinner, Row, Col } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../../services/api';
-import FormModal from '../../components/FormModal';
+import './LeaseTermination.css'; // Create this CSS file
 
 function LeaseTerminationForm() {
   const { id } = useParams();
@@ -10,9 +10,15 @@ function LeaseTerminationForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [leases, setLeases] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when form should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
+  
   const [formData, setFormData] = useState({
     lease: '',
     termination_type: 'normal',
@@ -60,30 +66,58 @@ function LeaseTerminationForm() {
     }
   };
 
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+      // Navigate after toast disappears
+      navigate('/lease-termination');
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+    // If it was a success toast, navigate back
+    if (toastVariant === 'success') {
+      navigate('/lease-termination');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setModalLoading(true);
-    setShowModal(true);
     setError('');
 
     try {
       if (id) {
         await apiClient.put(`/property/lease-terminations/${id}/`, formData);
-        setSuccessMessage('Lease termination updated successfully!');
+        showSuccessToast('Lease termination updated successfully!');
       } else {
         await apiClient.post('/property/lease-terminations/', formData);
-        setSuccessMessage('Lease termination created successfully!');
+        showSuccessToast('Lease termination created successfully!');
       }
-      
-      setModalLoading(false);
-      setTimeout(() => {
-        setShowModal(false);
-        navigate('/lease-termination');
-      }, 1500);
     } catch (err) {
-      setShowModal(false);
-      setError(err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Error saving lease termination');
+      const errorMsg = err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Error saving lease termination';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -98,6 +132,9 @@ function LeaseTerminationForm() {
     }));
   };
 
+  // Helper variable for form disabled state
+  const isDisabled = loading || isFormDisabled;
+
   if (loading && id) {
     return (
       <Container className="mt-4 text-center">
@@ -108,7 +145,30 @@ function LeaseTerminationForm() {
 
   return (
     <Container className="mt-4">
-      <Card>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={loading}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
+      <Card className={`${isDisabled ? 'form-disabled' : ''}`}>
         <Card.Header>
           <h3>
             <i className="fas fa-ban me-2"></i>
@@ -128,7 +188,7 @@ function LeaseTerminationForm() {
                     value={formData.lease}
                     onChange={handleChange}
                     required
-                    disabled={!!id}
+                    disabled={!!id || isDisabled}
                   >
                     <option value="">Select Lease</option>
                     {leases.map(lease => (
@@ -147,6 +207,7 @@ function LeaseTerminationForm() {
                     value={formData.termination_type}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   >
                     <option value="normal">Normal Termination</option>
                     <option value="early">Early Termination</option>
@@ -165,6 +226,7 @@ function LeaseTerminationForm() {
                     value={formData.termination_date}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -178,6 +240,7 @@ function LeaseTerminationForm() {
                     value={formData.original_security_deposit}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -194,6 +257,7 @@ function LeaseTerminationForm() {
                     value={formData.refundable_amount}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -206,6 +270,7 @@ function LeaseTerminationForm() {
                     name="maintenance_charges"
                     value={formData.maintenance_charges}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -223,6 +288,7 @@ function LeaseTerminationForm() {
                         name="unearned_rent"
                         value={formData.unearned_rent}
                         onChange={handleChange}
+                        disabled={isDisabled}
                       />
                     </Form.Group>
                   </Col>
@@ -235,6 +301,7 @@ function LeaseTerminationForm() {
                         name="early_termination_penalty"
                         value={formData.early_termination_penalty}
                         onChange={handleChange}
+                        disabled={isDisabled}
                       />
                     </Form.Group>
                   </Col>
@@ -249,6 +316,7 @@ function LeaseTerminationForm() {
                         label="Post-Dated Cheques Adjusted/Cancelled"
                         checked={formData.post_dated_cheques_adjusted}
                         onChange={handleChange}
+                        disabled={isDisabled}
                       />
                     </Form.Group>
                   </Col>
@@ -265,6 +333,7 @@ function LeaseTerminationForm() {
                           name="post_dated_cheques_notes"
                           value={formData.post_dated_cheques_notes}
                           onChange={handleChange}
+                          disabled={isDisabled}
                         />
                       </Form.Group>
                     </Col>
@@ -283,6 +352,7 @@ function LeaseTerminationForm() {
                     name="terms_conditions"
                     value={formData.terms_conditions}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -295,6 +365,7 @@ function LeaseTerminationForm() {
                     name="exit_notes"
                     value={formData.exit_notes}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -310,6 +381,7 @@ function LeaseTerminationForm() {
                     name="notes"
                     value={formData.notes}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   />
                 </Form.Group>
               </Col>
@@ -320,6 +392,7 @@ function LeaseTerminationForm() {
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
+                    disabled={isDisabled}
                   >
                     <option value="draft">Draft</option>
                     <option value="pending_approval">Pending Approval</option>
@@ -333,11 +406,24 @@ function LeaseTerminationForm() {
             </Row>
 
             <div className="d-flex gap-2">
-              <Button variant="primary" type="submit" disabled={loading}>
-                <i className="fas fa-save me-2"></i>
-                {loading ? 'Saving...' : (id ? 'Update' : 'Create')} Termination
+              <Button variant="primary" type="submit" disabled={isDisabled}>
+                {loading ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-save me-2"></i>
+                    {id ? 'Update' : 'Create'} Termination
+                  </>
+                )}
               </Button>
-              <Button variant="secondary" onClick={() => navigate('/lease-termination')}>
+              <Button 
+                variant="secondary" 
+                onClick={() => navigate('/lease-termination')}
+                disabled={isDisabled}
+              >
                 <i className="fas fa-times me-2"></i>
                 Cancel
               </Button>
@@ -345,16 +431,6 @@ function LeaseTerminationForm() {
           </Form>
         </Card.Body>
       </Card>
-      
-      <FormModal 
-        show={showModal}
-        loading={modalLoading}
-        message={successMessage}
-        onHide={() => {
-          setShowModal(false);
-          navigate('/lease-termination');
-        }}
-      />
     </Container>
   );
 }

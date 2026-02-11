@@ -350,7 +350,7 @@ const LeaseRenewal = () => {
   };
 
   return (
-    <Container className="mt-4">
+    <Container fluid className="mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <div className="page-header mb-4">
@@ -358,19 +358,17 @@ const LeaseRenewal = () => {
           </div>
           <p className="text-muted">Extend existing leases with new terms and conditions</p>
         </div>
-      </div>
-
-      {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
-
-      <div className="mb-4">
-        <Button 
-          variant="primary"
-          onClick={() => navigate('/lease-renewal/new')}
-        >
-          <i className="fas fa-plus me-2"></i>
-          New Lease Renewal
-        </Button>
+        {error && <Alert variant="danger">{error}</Alert>}
+        {success && <Alert variant="success">{success}</Alert>}
+        <div className="mb-4">
+          <Button 
+            variant="primary"
+            onClick={() => navigate('/lease-renewal/new')}
+          >
+            <i className="fas fa-plus me-2"></i>
+            New Lease Renewal
+          </Button>
+        </div>
       </div>
 
       {/* Filters and Search Bar */}
@@ -704,7 +702,7 @@ const LeaseRenewal = () => {
                             <Button 
                               size="sm"
                               variant="warning"
-                              onClick={() => handleEdit(renewal)}
+                              onClick={() => navigate(`/lease-renewal/edit/${renewal.id}`)}
                               title="Edit renewal"
                             >
                               <i className="fas fa-edit"></i>

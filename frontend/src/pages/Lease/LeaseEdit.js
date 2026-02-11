@@ -10,11 +10,18 @@ function LeaseEdit() {
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [units, setUnits] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when form should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
   
   const [leaseData, setLeaseData] = useState({
     lease_number: '',
@@ -77,17 +84,45 @@ function LeaseEdit() {
     }
   };
 
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setFieldErrors({});
     setLoading(true);
 
     try {
       await apiClient.put(`/property/leases/${id}/`, leaseData);
-      setSuccess('Lease updated successfully!');
-      setTimeout(() => navigate('/leases'), 2000);
+      showSuccessToast('Lease updated successfully!');
+      setTimeout(() => navigate('/leases'), 1500);
     } catch (err) {
       const errorData = err.response?.data;
       
@@ -107,14 +142,20 @@ function LeaseEdit() {
         
         if (Object.keys(errors).length > 0) {
           setFieldErrors(errors);
+          showErrorToast('Please fix the errors in the form');
         }
         if (generalError) {
           setError(generalError);
+          showErrorToast(generalError);
         } else if (Object.keys(errors).length === 0) {
-          setError(errorData.detail || 'Failed to update lease');
+          const errorMsg = errorData.detail || 'Failed to update lease';
+          setError(errorMsg);
+          showErrorToast(errorMsg);
         }
       } else {
-        setError(err.response?.data?.detail || err.message || 'Failed to update lease');
+        const errorMsg = err.response?.data?.detail || err.message || 'Failed to update lease';
+        setError(errorMsg);
+        showErrorToast(errorMsg);
       }
       console.error(err);
     } finally {
@@ -131,9 +172,45 @@ function LeaseEdit() {
     );
   }
 
+  // Helper variable for form disabled state
+  const isDisabled = loading || isFormDisabled;
+
   return (
     <Container className="lease-form-container mt-5">
-      <Card className="lease-form-card">
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={loading}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="form-loading-overlay">
+          <div className="loading-spinner-container">
+            <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+            <p className="mt-3">Updating lease...</p>
+          </div>
+        </div>
+      )}
+
+      <Card className={`lease-form-card ${isDisabled ? 'form-disabled' : ''}`}>
         <Card.Header className="bg-primary text-white">
           <h2 className="mb-0">
             <i className="fas fa-edit me-2"></i>
@@ -141,8 +218,7 @@ function LeaseEdit() {
           </h2>
         </Card.Header>
         <Card.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
-          {success && <Alert variant="success">{success}</Alert>}
+          {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
 
           <Form onSubmit={handleSubmit}>
             <h4 className="mb-4">Lease Information</h4>
@@ -158,6 +234,7 @@ function LeaseEdit() {
                     onChange={handleChange}
                     placeholder="e.g., LEASE-001"
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.lease_number}
                   />
                   {fieldErrors.lease_number && (
@@ -175,6 +252,7 @@ function LeaseEdit() {
                     value={leaseData.unit}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.unit}
                   >
                     <option value="">Select Unit</option>
@@ -198,6 +276,7 @@ function LeaseEdit() {
                     name="tenant"
                     value={leaseData.tenant}
                     onChange={handleChange}
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.tenant}
                   >
                     <option value="">Select Tenant (Optional)</option>
@@ -228,6 +307,7 @@ function LeaseEdit() {
                     value={leaseData.start_date}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.start_date}
                   />
                   {fieldErrors.start_date && (
@@ -246,6 +326,7 @@ function LeaseEdit() {
                     value={leaseData.end_date}
                     onChange={handleChange}
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.end_date}
                   />
                   {fieldErrors.end_date && (
@@ -271,6 +352,7 @@ function LeaseEdit() {
                     onChange={handleChange}
                     placeholder="0.00"
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.monthly_rent}
                   />
                   {fieldErrors.monthly_rent && (
@@ -291,6 +373,7 @@ function LeaseEdit() {
                     onChange={handleChange}
                     placeholder="0.00"
                     required
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.security_deposit}
                   />
                   {fieldErrors.security_deposit && (
@@ -307,6 +390,7 @@ function LeaseEdit() {
                     name="status"
                     value={leaseData.status}
                     onChange={handleChange}
+                    disabled={isDisabled}
                     isInvalid={!!fieldErrors.status}
                   >
                     <option value="draft">Draft</option>
@@ -334,6 +418,7 @@ function LeaseEdit() {
                 onChange={handleChange}
                 placeholder="Enter lease terms and conditions"
                 rows={4}
+                disabled={isDisabled}
                 isInvalid={!!fieldErrors.terms_conditions}
               />
               {fieldErrors.terms_conditions && (
@@ -347,7 +432,7 @@ function LeaseEdit() {
               <Button
                 variant="primary"
                 type="submit"
-                disabled={loading}
+                disabled={isDisabled}
                 className="btn-lg"
               >
                 {loading ? (
@@ -366,7 +451,7 @@ function LeaseEdit() {
                 variant="secondary"
                 onClick={() => navigate('/leases')}
                 className="btn-lg"
-                disabled={loading}
+                disabled={isDisabled}
               >
                 <i className="fas fa-times me-2"></i>
                 Cancel

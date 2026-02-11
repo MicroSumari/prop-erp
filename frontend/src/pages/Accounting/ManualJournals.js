@@ -12,9 +12,11 @@ import {
   InputGroup,
   FormControl,
   Pagination,
-  Badge
+  Badge,
+  Spinner
 } from 'react-bootstrap';
 import apiClient from '../../services/api';
+import './ManualJournals.css'; // Create this CSS file
 
 const ManualJournals = () => {
   const [accounts, setAccounts] = useState([]);
@@ -28,6 +30,14 @@ const ManualJournals = () => {
   const [viewItem, setViewItem] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editDescription, setEditDescription] = useState('');
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
+  
+  // Add this state to track when modals should be disabled
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,6 +60,36 @@ const ManualJournals = () => {
     ],
   };
   const [formData, setFormData] = useState(initialFormData);
+
+  // Toast functions
+  const showSuccessToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('success');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    setToastMessage(message);
+    setToastVariant('danger');
+    setShowToast(true);
+    setIsFormDisabled(true);
+    
+    setTimeout(() => {
+      setShowToast(false);
+      setIsFormDisabled(false);
+    }, 3000);
+  };
+
+  const handleToastClose = () => {
+    setShowToast(false);
+    setIsFormDisabled(false);
+  };
 
   // Build query parameters for API
   const buildQueryParams = () => {
@@ -77,7 +117,7 @@ const ManualJournals = () => {
       const [accRes, ccRes, entryRes] = await Promise.all([
         apiClient.get('/accounts/accounts/'),
         apiClient.get('/accounts/cost-centers/'),
-        apiClient.get(`/accounts/manual-journals/?${paramsString}`), // CORRECTED ENDPOINT
+        apiClient.get(`/accounts/manual-journals/?${paramsString}`),
       ]);
       
       const accountsList = normalizeList(accRes.data);
@@ -195,7 +235,7 @@ const ManualJournals = () => {
       totalCredit += credit;
     }
     
-    if (Math.abs(totalDebit - totalCredit) > 0.01) { // Allow small rounding differences
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
       setError(`Debit total (${totalDebit.toFixed(2)}) must equal credit total (${totalCredit.toFixed(2)})`);
       return false;
     }
@@ -217,6 +257,8 @@ const ManualJournals = () => {
       return;
     }
     
+    setIsFormDisabled(true);
+    
     try {
       const payload = {
         description: formData.description,
@@ -228,12 +270,17 @@ const ManualJournals = () => {
         })),
       };
       await apiClient.post('/accounts/manual-journals/', payload);
+      showSuccessToast('Manual journal entry created successfully!');
       setSuccess('Manual journal entry created successfully');
       setShowForm(false);
       setFormData(initialFormData);
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create manual journal entry');
+      const errorMsg = err.response?.data?.message || 'Failed to create manual journal entry';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setIsFormDisabled(false);
     }
   };
 
@@ -241,17 +288,24 @@ const ManualJournals = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsFormDisabled(true);
+    
     try {
-      await apiClient.patch(`/accounts/manual-journals/${editingId}/`, { // CORRECTED ENDPOINT
+      await apiClient.patch(`/accounts/manual-journals/${editingId}/`, {
         description: editDescription,
       });
-      setSuccess('Manual journal entry updated successfully');
+      showSuccessToast('Manual journal entry updated successfully!');
+      
       setShowEdit(false);
       setEditingId(null);
       setEditDescription('');
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update manual journal entry');
+      const errorMsg = err.response?.data?.message || 'Failed to update manual journal entry';
+      setError(errorMsg);
+      showErrorToast(errorMsg);
+    } finally {
+      setIsFormDisabled(false);
     }
   };
 
@@ -381,12 +435,35 @@ const ManualJournals = () => {
 
   return (
     <Container fluid>
+      {/* Advanced Animated Toast */}
+      <div className={`custom-toast ${showToast ? 'show' : ''} ${toastVariant}`}>
+        <div className="toast-content">
+          <div className="toast-icon">
+            {toastVariant === 'success' ? (
+              <i className="fas fa-check-circle"></i>
+            ) : (
+              <i className="fas fa-exclamation-circle"></i>
+            )}
+          </div>
+          <div className="toast-message">
+            <div className="toast-title">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div className="toast-text">{toastMessage}</div>
+          </div>
+          <button className="toast-close" onClick={handleToastClose} disabled={isFormDisabled}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="toast-progress"></div>
+      </div>
+
       <div className="page-header mb-4">
         <h1>
           <i className="fas fa-book me-2"></i>
           Manual Journal Entries
         </h1>
-        <Button variant="primary" onClick={openCreate}>
+        <Button variant="primary" onClick={openCreate} disabled={isFormDisabled}>
           <i className="fas fa-plus me-2"></i>
           Add Manual Journal
         </Button>
@@ -412,11 +489,12 @@ const ManualJournals = () => {
                   placeholder="Search by description, account number, or account name..."
                   value={searchQuery}
                   onChange={handleSearchChange}
+                  disabled={isFormDisabled}
                 />
               </InputGroup>
             </Col>
             <Col md={3}>
-              <Button variant="outline-secondary" onClick={clearFilters}>
+              <Button variant="outline-secondary" onClick={clearFilters} disabled={isFormDisabled}>
                 <i className="fas fa-times me-2"></i>
                 Clear Filters
               </Button>
@@ -435,6 +513,7 @@ const ManualJournals = () => {
                   type="date"
                   value={dateFromFilter}
                   onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                  disabled={isFormDisabled}
                 />
               </Form.Group>
             </Col>
@@ -445,6 +524,7 @@ const ManualJournals = () => {
                   type="date"
                   value={dateToFilter}
                   onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                  disabled={isFormDisabled}
                 />
               </Form.Group>
             </Col>
@@ -539,6 +619,7 @@ const ManualJournals = () => {
                               size="sm"
                               onClick={() => openView(entry)}
                               title="View details"
+                              disabled={isFormDisabled}
                             >
                               <i className="fas fa-eye"></i>
                             </Button>
@@ -547,6 +628,7 @@ const ManualJournals = () => {
                               size="sm"
                               onClick={() => openEdit(entry)}
                               title="Edit description"
+                              disabled={isFormDisabled}
                             >
                               <i className="fas fa-edit"></i>
                             </Button>
@@ -582,23 +664,23 @@ const ManualJournals = () => {
               <Pagination>
                 <Pagination.First 
                   onClick={() => setCurrentPage(1)} 
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isFormDisabled}
                   title="First Page"
                 />
                 <Pagination.Prev 
                   onClick={() => setCurrentPage(currentPage - 1)} 
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isFormDisabled}
                   title="Previous Page"
                 />
                 {renderPaginationItems()}
                 <Pagination.Next 
                   onClick={() => setCurrentPage(currentPage + 1)} 
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || isFormDisabled}
                   title="Next Page"
                 />
                 <Pagination.Last 
                   onClick={() => setCurrentPage(totalPages)} 
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || isFormDisabled}
                   title="Last Page"
                 />
               </Pagination>
@@ -629,13 +711,14 @@ const ManualJournals = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter journal description"
                 required
+                disabled={isFormDisabled}
               />
             </Form.Group>
             
             <div className="mb-3">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <h6>Journal Lines *</h6>
-                <Button variant="outline-primary" size="sm" onClick={addLine}>
+                <Button variant="outline-primary" size="sm" onClick={addLine} disabled={isFormDisabled}>
                   <i className="fas fa-plus me-1"></i> Add Line
                 </Button>
               </div>
@@ -659,6 +742,7 @@ const ManualJournals = () => {
                             value={line.account} 
                             onChange={(e) => handleLineChange(idx, 'account', e.target.value)}
                             required
+                            disabled={isFormDisabled}
                           >
                             <option value="">Select account</option>
                             {accounts.map((a) => (
@@ -675,6 +759,7 @@ const ManualJournals = () => {
                             placeholder="0.00" 
                             value={line.debit} 
                             onChange={(e) => handleLineChange(idx, 'debit', e.target.value)}
+                            disabled={isFormDisabled}
                           />
                         </td>
                         <td>
@@ -684,12 +769,14 @@ const ManualJournals = () => {
                             placeholder="0.00" 
                             value={line.credit} 
                             onChange={(e) => handleLineChange(idx, 'credit', e.target.value)}
+                            disabled={isFormDisabled}
                           />
                         </td>
                         <td>
                           <Form.Select 
                             value={line.cost_center} 
                             onChange={(e) => handleLineChange(idx, 'cost_center', e.target.value)}
+                            disabled={isFormDisabled}
                           >
                             <option value="">Optional</option>
                             {costCenters.map((c) => (
@@ -706,6 +793,7 @@ const ManualJournals = () => {
                               size="sm"
                               onClick={() => removeLine(idx)}
                               title="Remove line"
+                              disabled={isFormDisabled}
                             >
                               <i className="fas fa-trash"></i>
                             </Button>
@@ -731,12 +819,22 @@ const ManualJournals = () => {
                   setFormData(initialFormData);
                   setError('');
                 }}
+                disabled={isFormDisabled}
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
-                <i className="fas fa-save me-2"></i>
-                Post Journal
+              <Button type="submit" variant="primary" disabled={isFormDisabled}>
+                {isFormDisabled ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Posting...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-save me-2"></i>
+                    Post Journal
+                  </>
+                )}
               </Button>
             </div>
           </Form>
@@ -841,7 +939,7 @@ const ManualJournals = () => {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowView(false)}>
+          <Button variant="secondary" onClick={() => setShowView(false)} disabled={isFormDisabled}>
             Close
           </Button>
         </Modal.Footer>
@@ -860,11 +958,23 @@ const ManualJournals = () => {
                 value={editDescription} 
                 onChange={(e) => setEditDescription(e.target.value)}
                 required
+                disabled={isFormDisabled}
               />
             </Form.Group>
             <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={() => setShowEdit(false)}>Cancel</Button>
-              <Button type="submit" variant="primary">Save Changes</Button>
+              <Button variant="secondary" onClick={() => setShowEdit(false)} disabled={isFormDisabled}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isFormDisabled}>
+                {isFormDisabled ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
             </div>
           </Form>
         </Modal.Body>
